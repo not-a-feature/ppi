@@ -17,7 +17,6 @@
                 $result = $recurringTasksSystem->setUpTaskForRun($recurringTaskID);
                 if ($result) {
                     $log->debug('recurringtasks.php', 'Successfully set up task to be run with ID: ' . $recurringTaskID);
-                    $redirect->redirectTo('recurringtasks.php');
                 } else {
                     $log->error('recurringtasks.php', 'Setting up task to be run unsuccessful with ID ' . $recurringTaskID);
                 }
