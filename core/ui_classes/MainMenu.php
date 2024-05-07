@@ -11,12 +11,12 @@ class MainMenu {
         if ($user->getRole() == Constants::USER_ROLES['admin']) {
             $menu .= '<div style="width: 90vw; margin: 0 auto; padding: 10px; text-align: center; display: flex; flex-wrap: wrap; justify-content: center;">';
             $menu .= '<a class="styledButtonGray menuButton">' . $i18n->get('adminOptions') . ': ' . '</a>';
-            $menu .= '<a class="styledButton menuButton" href="userslist.php">' . $i18n->get('usersList') . '</a>';
-            $menu .= '<a class="styledButton menuButton" href="lectureslist.php">' . $i18n->get('lecturesList') . '</a>';
-            $menu .= '<a class="styledButton menuButton" href="examprotocolslist.php">' . $i18n->get('examProtocolsList') . '</a>';
-            $menu .= '<a class="styledButton menuButton" href="logevents.php">' . $i18n->get('logEvents') . '</a>';
-            $menu .= '<a class="styledButton menuButton" href="unittests.php">' . $i18n->get('unitTests') . '</a>';
-            $menu .= '<a class="styledButton menuButton" href="recurringtasks.php">' . $i18n->get('recurringTasks') . '</a>';
+            $menu .= '<a class="styledButtonRed menuButton" href="userslist.php">' . $i18n->get('usersList') . '</a>';
+            $menu .= '<a class="styledButtonRed menuButton" href="lectureslist.php">' . $i18n->get('lecturesList') . '</a>';
+            $menu .= '<a class="styledButtonRed menuButton" href="examprotocolslist.php">' . $i18n->get('examProtocolsList') . '</a>';
+            $menu .= '<a class="styledButtonRed menuButton" href="logevents.php">' . $i18n->get('logEvents') . '</a>';
+            $menu .= '<a class="styledButtonRed menuButton" href="unittests.php">' . $i18n->get('unitTests') . '</a>';
+            $menu .= '<a class="styledButtonRed menuButton" href="recurringtasks.php">' . $i18n->get('recurringTasks') . '</a>';
         }
         $menu .= '</div>';
         return $menu;
