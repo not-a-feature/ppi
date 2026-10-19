@@ -153,6 +153,34 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       await pool.query('DELETE FROM lecture WHERE id=$1', [lecture]);
     });
 
+    it('blocks the owner and cached downloads without changing ownership, rewards or purchased access', async () => {
+      const storedBalance = (
+        await pool.query('SELECT balance FROM credit_account WHERE user_id=$1', [student.id])
+      ).rows[0].balance;
+      const accessBefore = (
+        await pool.query('SELECT * FROM lecture_access WHERE user_id=$1', [student.id])
+      ).rows;
+      await domain.setAccountStatus(admin, student.id, 'suspended');
+      await expect(domain.getDownload(student, revisionIds[0])).rejects.toMatchObject({
+        status: 403
+      });
+      await expect(archives.getArchiveDownload(student, archiveId)).rejects.toMatchObject({
+        status: 403
+      });
+      expect((await domain.getDownload(admin, revisionIds[0])).storageKey).toBe(fileKeys[0]);
+      expect((await domain.getSubmission(admin, submissionId)).uploader_id).toBe(student.id);
+      expect(
+        (await pool.query('SELECT balance FROM credit_account WHERE user_id=$1', [student.id]))
+          .rows[0].balance
+      ).toBe(storedBalance);
+      expect(
+        (await pool.query('SELECT * FROM lecture_access WHERE user_id=$1', [student.id])).rows
+      ).toEqual(accessBefore);
+      await domain.setAccountStatus(admin, student.id, 'active');
+      expect((await domain.getDownload(student, revisionIds[0])).storageKey).toBe(fileKeys[0]);
+      expect((await archives.getArchiveDownload(student, archiveId)).storageKey).toBe(archiveKey);
+    });
+
     it('rejects student escalation and stale deletion without changing files', async () => {
       await expect(
         deletion.requestProtocolFileDeletion(
@@ -176,6 +204,9 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
     });
 
     it('blocks every file and cached archive immediately while retaining metadata and rewards', async () => {
+      const accessBefore = (
+        await pool.query('SELECT * FROM lecture_access WHERE user_id=$1', [student.id])
+      ).rows;
       await deletion.requestProtocolFileDeletion(admin, {
         submissionId,
         expectedVersion: version,
@@ -189,6 +220,9 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       });
       expect((await domain.getSubmission(admin, submissionId)).revisions).toHaveLength(2);
       expect((await domain.getCreditsDashboard(student)).balance).toBe(balance);
+      expect(
+        (await pool.query('SELECT * FROM lecture_access WHERE user_id=$1', [student.id])).rows
+      ).toEqual(accessBefore);
       expect(
         (await pool.query('SELECT count(*)::integer AS count FROM moderation_decision')).rows[0]
           .count

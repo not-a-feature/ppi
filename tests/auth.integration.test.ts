@@ -317,6 +317,137 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL authentication', () 
     expect(missing.status).toBe(true);
   });
 
+  it('resets a migrated account without changing its balance or ownership and cannot bypass blocking or deletion', async () => {
+    const migratedId = randomUUID(),
+      target = 'zxmig01@student.uni-tuebingen.de';
+    const domain = await import('../src/lib/server/domain');
+    const { transaction } = await import('../src/lib/server/db');
+    const { cleanupInactiveAccounts } = await import('../src/lib/server/account-cleanup');
+    await pool.query('INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)', [
+      migratedId,
+      'Migrated fixture',
+      target
+    ]);
+    await pool.query(
+      "INSERT INTO ppi_user(user_id,status,last_login_at) VALUES($1,'active',now())",
+      [migratedId]
+    );
+    await pool.query('INSERT INTO credit_account(user_id,balance) VALUES($1,17)', [migratedId]);
+    await pool.query(
+      "INSERT INTO credit_entry(user_id,amount,kind,business_key,policy_version) VALUES($1,17,'legacy_opening',$2,1)",
+      [migratedId, `activation:${migratedId}`]
+    );
+    const migrated = (await domain.getActor(migratedId))!;
+    const adminId = randomUUID();
+    await pool.query('INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)', [
+      adminId,
+      'Migration fixture admin',
+      'zxmad01@student.uni-tuebingen.de'
+    ]);
+    await activateAccount(adminId);
+    await pool.query('UPDATE ppi_user SET is_admin=true WHERE user_id=$1', [adminId]);
+    const admin = (await domain.getActor(adminId))!;
+    const lecture = await domain.createLecture(admin, 'Migrated ownership fixture');
+    const fileId = randomUUID(),
+      submissionId = randomUUID(),
+      revisionId = randomUUID();
+    await transaction(async (client) => {
+      await client.query(
+        `INSERT INTO stored_file(id,storage_key,sha256,byte_count,media_type,original_name,safety_status) VALUES($1,$2,$3,12,'text/plain','WS2020-21_2021-02-03_99.txt','clean')`,
+        [fileId, randomUUID(), 'd'.repeat(64)]
+      );
+      await client.query(
+        `INSERT INTO submission(id,uploader_id,current_revision_id,published_revision_id,review_state,visibility) VALUES($1,$2,$3,$3,'accepted','published')`,
+        [submissionId, migratedId, revisionId]
+      );
+      await client.query(
+        `INSERT INTO submission_revision(id,submission_id,revision_number,file_id,term,exam_date,remarks,attested) VALUES($1,$2,1,$3,'WS2020/21','2021-02-03','Preserved metadata',true)`,
+        [revisionId, submissionId, fileId]
+      );
+      await client.query('INSERT INTO revision_lecture VALUES($1,$2)', [revisionId, lecture.id]);
+    });
+    const ledger = (await pool.query('SELECT * FROM credit_entry WHERE user_id=$1', [migratedId]))
+      .rows;
+    const assertPreserved = async () => {
+      expect(
+        (await pool.query('SELECT balance FROM credit_account WHERE user_id=$1', [migratedId]))
+          .rows[0].balance
+      ).toBe(17);
+      expect(
+        (await pool.query('SELECT * FROM credit_entry WHERE user_id=$1', [migratedId])).rows
+      ).toEqual(ledger);
+      const submission = await domain.getSubmission(admin, submissionId);
+      expect(submission.uploader_id).toBe(migratedId);
+      expect(submission.revisions[0]).toMatchObject({
+        term: 'WS2020/21',
+        remarks: 'Preserved metadata',
+        file_deleted_at: null
+      });
+    };
+    const resetToken = async () => {
+      await auth.api.requestPasswordReset({
+        body: { email: target, redirectTo: '/reset-password' }
+      });
+      const message = mail.mock.calls.at(-1)![0];
+      expect(message.to).toBe(target);
+      return new URL(message.text.match(/http:\/\/[^\s]+/)![0]).pathname.split('/').at(-1)!;
+    };
+    await expect(
+      auth.api.signInEmail({ body: { email: target, password: 'Old-legacy-password-2026!' } })
+    ).rejects.toMatchObject({ statusCode: 401 });
+    const firstToken = await resetToken();
+    const newPassword = 'Migrated-password-reset-2026!';
+    await auth.api.resetPassword({ body: { token: firstToken, newPassword } });
+    expect(
+      (await auth.api.signInEmail({ body: { email: target, password: newPassword } })).user.id
+    ).toBe(migratedId);
+    await activateAccount(migratedId);
+    await assertPreserved();
+    await domain.setAccountStatus(admin, migratedId, 'suspended');
+    expect(
+      (await pool.query('SELECT * FROM session WHERE "userId"=$1', [migratedId])).rowCount
+    ).toBe(0);
+    const blockedToken = await resetToken();
+    await auth.api.resetPassword({
+      body: { token: blockedToken, newPassword: 'Blocked-reset-password-2026!' }
+    });
+    await expect(
+      auth.api.signInEmail({ body: { email: target, password: 'Blocked-reset-password-2026!' } })
+    ).rejects.toMatchObject({ statusCode: 403 });
+    await expect(domain.getDownload(migrated, revisionId)).rejects.toMatchObject({ status: 403 });
+    expect((await domain.getDownload(admin, revisionId)).fileId).toBe(fileId);
+    await assertPreserved();
+    const staleToken = await resetToken();
+    await pool.query(
+      "UPDATE ppi_user SET last_login_at=now()-interval '3 years' WHERE user_id=$1",
+      [migratedId]
+    );
+    expect((await cleanupInactiveAccounts()).deleted).toBe(1);
+    await expect(
+      auth.api.resetPassword({
+        body: { token: staleToken, newPassword: 'Should-not-revive-2026!' }
+      })
+    ).rejects.toMatchObject({ statusCode: 400 });
+    await expect(domain.getDownload(migrated, revisionId)).rejects.toMatchObject({ status: 403 });
+    await assertPreserved();
+    const sent = mail.mock.calls.length;
+    await auth.api.requestPasswordReset({ body: { email: target, redirectTo: '/reset-password' } });
+    expect(mail.mock.calls).toHaveLength(sent);
+    await auth.api.signUpEmail({
+      body: { email: target, password: newPassword, name: 'New registration' }
+    });
+    const replacement = (await pool.query('SELECT id FROM "user" WHERE email=$1', [target])).rows[0]
+      .id;
+    expect(replacement).not.toBe(migratedId);
+    expect(
+      (await pool.query('SELECT * FROM submission WHERE uploader_id=$1', [replacement])).rowCount
+    ).toBe(0);
+    expect(
+      (await pool.query('SELECT * FROM credit_account WHERE user_id=$1', [replacement])).rowCount
+    ).toBe(0);
+    await assertPreserved();
+  });
+
   it('atomically limits parallel auth form submissions across the shared database', async () => {
     const allowed = await Promise.all(
       Array.from({ length: 11 }, () => allowAuthForm('/login', '192.0.2.1'))

@@ -857,9 +857,17 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     await expect(
       domain.reviseProtocol(student, first.submissionId, input(lecture.id))
     ).rejects.toMatchObject({ code: 'files_deleted' });
-    await expect(review(first.revisionId, own.version, 'none')).rejects.toMatchObject({
+    await expect(review(first.revisionId, own.version, 'base')).rejects.toMatchObject({
       code: 'files_deleted'
     });
+    expect(await balance(student)).toBe(5);
+    expect(
+      (
+        await db.pool.query('SELECT * FROM reward_allocation WHERE submission_id=$1', [
+          first.submissionId
+        ])
+      ).rows
+    ).toHaveLength(0);
     await expect(domain.reprocessFile(admin, first.submissionId)).rejects.toMatchObject({
       code: 'not_found'
     });

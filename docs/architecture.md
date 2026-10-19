@@ -36,7 +36,9 @@ Technical checks block unsafe files. Duplicate, similarity, content and metadata
 
 Defaults are configurable through administration: 5 tokens after verification, 3 for a contribution, 6 for an excellent contribution, 1 for four weeks of lecture access, and a periodic grant of 2. The default grant dates are 1 April and 1 October at midnight in Europe/Berlin. Reconcile the schedule before production activation.
 
-Rewards are shared equally between distinct registered, verified, active contributors, including the uploader, rounding each share upward. Unknown collaborators are ignored. Recipients freeze at the first award; improvements receive no reward. Corrections use explicit administrator adjustments.
+Rewards are shared equally between distinct registered, verified contributors, including the uploader, rounding each share upward. Suspension blocks access but does not remove reward or periodic-grant eligibility. Unknown collaborators are ignored. Recipients freeze at the first award; improvements receive no reward. Corrections use explicit administrator adjustments.
+
+Deleting protocol files keeps already-granted rewards and purchased lecture access unchanged. Deleted protocols cannot receive new rewards.
 
 Balances cannot become negative and equal the sum of ledger entries. Purchases lock the account to prevent overspending. Decisions, rewards, audit events and notification enqueue commit together. Receipts and unique business keys prevent retries from repeating effects. Imported balances become opening entries without reconstructed history.
 

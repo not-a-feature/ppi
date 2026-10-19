@@ -29,7 +29,7 @@ At cutover, reconcile legacy changes made after the protocol collection was popu
 | Legacy logs                    | Restricted archive if retention policy requires it                             |
 | Recurring tasks                | Reviewed schedules, with the first periodic grant disabled until reconciled    |
 
-Do not reconstruct historical transactions, recalculate balances from protocol status, or split old rewards. Import without activation/contribution handlers or outbound notifications. Previously reviewed protocols must not receive retrospective rewards on recheck; imported pending submissions use the new policy on first decision. Mark activation credit as already accounted for and review unverified legacy accounts separately.
+Do not reconstruct historical transactions, recalculate balances from protocol status, or split old rewards. Import without activation/contribution handlers or outbound notifications. Previously reviewed protocols must not receive retrospective rewards on recheck; imported pending submissions use the new policy on first decision. Give each opening entry the business key `activation:<target user ID>` so verification or provisioning retries cannot add starter tokens. Review unverified legacy accounts separately.
 
 ## Accounts and passwords
 

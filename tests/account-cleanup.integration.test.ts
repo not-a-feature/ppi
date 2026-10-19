@@ -46,7 +46,9 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Inactive account cleanup', () =
   it('removes old credentials and profile data while preserving protocol files and the ledger', async () => {
     const admin = await user('3 years', '1 day', true),
       old = await user('4 years', '3 years');
+    const reader = await user('1 year', '1 day');
     const lecture = await domain.createLecture(admin, 'Cleanup lecture');
+    await domain.purchaseLectureAccess(reader, lecture.id, randomUUID());
     const fileId = randomUUID(),
       submissionId = randomUUID(),
       revisionId = randomUUID(),
@@ -57,7 +59,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Inactive account cleanup', () =
     );
     await transaction(async (client) => {
       await client.query(
-        `INSERT INTO submission(id,uploader_id,current_revision_id) VALUES($1,$2,$3)`,
+        `INSERT INTO submission(id,uploader_id,current_revision_id,published_revision_id,review_state,visibility) VALUES($1,$2,$3,$3,'accepted','published')`,
         [submissionId, old.id, revisionId]
       );
       await client.query(
@@ -128,6 +130,8 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Inactive account cleanup', () =
         .rows[0]
     ).toEqual({ storage_key: storageKey, deleted_at: null });
     expect(await domain.getActor(old.id)).toBeNull();
+    await expect(domain.getDownload(old, revisionId)).rejects.toMatchObject({ status: 403 });
+    expect((await domain.getDownload(reader, revisionId)).fileId).toBe(fileId);
     await domain.processPeriodicGrant('frozen-cleanup');
     await domain.processPeriodicGrant('cleanup-test');
     expect(
