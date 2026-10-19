@@ -49,6 +49,8 @@ Production requires ClamAV and current signatures; `FILE_SCAN_MODE=development` 
 
 Upload quotas are checked before writing and again under an account lock when committing. Database connections have bounded statement, lock and idle-transaction waits. Administrators can inspect failures, retry jobs and pause queues through the website. A paused queue still permits running work to finish.
 
+Admin settings allow any email address with separate choices for exhausted job failures, content reports, application/worker errors and uploads (including improvements). Alerts use the existing mail queue; worker crash alerts can arrive after restart. Repeated application errors are grouped into 15-minute windows. Abruptly stopped workers are detected after a missed two-minute heartbeat by a running worker. Complete server outages require external monitoring. Alert emails contain links and references, without protocol content or exception details.
+
 ## Backup and release
 
 1. Put the proxy in maintenance mode and prevent new worker jobs and schedules from starting.

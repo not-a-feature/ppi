@@ -8,6 +8,7 @@ import {
   type DatabaseMode
 } from './db.js';
 import { DomainError, getActor, type Actor } from './domain/index.js';
+import { queueAdminAlert } from './admin-alerts.js';
 
 export const queueNames = [
   'file_check',
@@ -102,6 +103,40 @@ export async function dispatchOutbox() {
       await client.query('UPDATE core_job SET dispatched_at=now() WHERE id=$1', [item.id]);
     }
     return pending.rowCount;
+  });
+}
+export async function collectAdminJobAlerts() {
+  return transaction(async (client) => {
+    const failed = await client.query(
+      `SELECT j.id,j.name,j.completed_on,j.id::text||':'||j.completed_on::text alert_key
+      FROM "${queueSchema()}".job j WHERE j.state='failed' AND j.name=ANY($1::text[])
+      AND j.completed_on >= (SELECT min(updated_at) FROM admin_alert_recipient WHERE job_failed)
+      AND NOT EXISTS(SELECT 1 FROM admin_alert_event e WHERE e.event_key='job_failed:'||j.id::text||':'||j.completed_on::text)
+      AND NOT (j.name='notification' AND EXISTS(SELECT 1 FROM email_outbox m WHERE m.id::text=j.data->>'emailId' AND m.admin_alert_type IS NOT NULL))
+      ORDER BY j.completed_on,j.id LIMIT 50`,
+      [queueNames]
+    );
+    for (const job of failed.rows)
+      await queueAdminAlert(client, {
+        type: 'job_failed',
+        key: job.alert_key,
+        occurredAt: job.completed_on,
+        text: `Ein Job ist nach allen Wiederholungen fehlgeschlagen.\nTyp: ${job.name}\nKennung: ${job.id}`,
+        path: `/admin/jobs/${job.id}`
+      });
+    const stopped = await client.query(
+      "DELETE FROM worker_heartbeat WHERE last_seen<now()-interval '2 minutes' RETURNING id,last_seen"
+    );
+    for (const worker of stopped.rows)
+      await queueAdminAlert(client, {
+        type: 'system_error',
+        key: `worker:${worker.id}`,
+        occurredAt: worker.last_seen,
+        text: `Ein Worker hat sich seit mindestens zwei Minuten nicht mehr gemeldet.\nKennung: ${worker.id}`,
+        path: '/admin/jobs'
+      });
+    await client.query("DELETE FROM admin_alert_event WHERE created_at<now()-interval '8 days'");
+    return failed.rowCount;
   });
 }
 const jobColumns = `id,name,state,created_on AS "createdOn",started_on AS "startedOn",

@@ -9,6 +9,7 @@ import {
   notify
 } from './shared.js';
 import { transaction } from '../db.js';
+import { queueAdminAlert } from '../admin-alerts.js';
 
 export type ContentReportInput = {
   lectureId?: string;
@@ -73,6 +74,12 @@ export async function reportContent(actor: Actor, input: ContentReportInput) {
         lectureId: input.lectureId,
         submissionId: input.submissionId,
         category: input.category
+      });
+      await queueAdminAlert(client, {
+        type: 'content_reported',
+        key: report.id,
+        text: 'Ein Inhalt wurde gemeldet.',
+        path: '/admin/reports'
       });
       return report;
     });

@@ -1,6 +1,6 @@
 import { t } from '$lib/i18n';
 import { building } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { auth } from '$lib/server/auth';
 import { pool } from '$lib/server/db';
@@ -13,6 +13,17 @@ import {
   validateProxyConfiguration
 } from '$lib/server/auth/client-address';
 import { tryAcquireUpload } from '$lib/server/upload-concurrency';
+import { recordSystemFailure } from '$lib/server/admin-alerts';
+
+export const handleError: HandleServerError = async ({ error, event, status, message }) => {
+  if (status >= 500)
+    await recordSystemFailure(
+      'web',
+      error,
+      `${event.request.method} ${event.route.id ?? '(unknown route)'}`
+    ).catch(() => console.error('Could not queue administrator error notification.'));
+  return { message };
+};
 
 if (!building) validateProxyConfiguration();
 

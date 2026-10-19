@@ -15,14 +15,16 @@ function escapeHtml(value: string): string {
   });
 }
 
-function safeAuthUrl(value: string, appOrigin: URL): string | null {
+function safeActionUrl(value: string, appOrigin: URL): string | null {
   if (appOrigin.protocol !== 'https:' || !value.startsWith(`${appOrigin.origin}/`)) return null;
   const url = new URL(value);
   if (url.origin !== appOrigin.origin || url.username || url.password || url.hash) return null;
   const validVerification =
     url.pathname === '/api/auth/verify-email' && url.searchParams.has('token');
   const validPasswordReset = /^\/api\/auth\/reset-password\/[\w-]+$/.test(url.pathname);
-  return validVerification || validPasswordReset ? url.href : null;
+  const validAdminPage =
+    /^\/admin\/(?:reports|jobs(?:\/[a-f0-9-]{36})?|review\/[a-f0-9-]{36})$/.test(url.pathname);
+  return validVerification || validPasswordReset || validAdminPage ? url.href : null;
 }
 
 export function renderEmailHtml(subject: string, body: string, appOriginValue: string): string {
@@ -34,7 +36,7 @@ export function renderEmailHtml(subject: string, body: string, appOriginValue: s
     .map((paragraph) => {
       const lines = paragraph.split(/\r?\n/);
       if (lines.length === 2) {
-        const href = safeAuthUrl(lines[1], appOrigin);
+        const href = safeActionUrl(lines[1], appOrigin);
         if (href) {
           const label = lines[0].replace(/[:：]\s*$/, '');
           return `<p style="margin:24px 0;text-align:center"><a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 20px;background:#000080;color:#fff;text-decoration:none;border-radius:4px;font-weight:600">${escapeHtml(label)}</a></p>`;

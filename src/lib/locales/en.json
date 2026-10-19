@@ -758,5 +758,18 @@
   "faq.report.question": "How do I report an inaccurate or problematic protocol?",
   "faq.report.answer": "Open the course page and use its report option for errors or problematic content. The student council will review the report.",
   "imprint.content": "The PPI is a platform of the Student Union Computer Science (Fachschaft Informatik). This is part of the University of Tübingen, which is represented by the Rector. See the",
-  "imprint.link": "impressum of the website of the fsi"
+  "imprint.link": "impressum of the website of the fsi",
+  "E-Mail-Adresse": "Email address",
+  "E-Mail-Benachrichtigungen": "Email notifications",
+  "Job fehlgeschlagen": "Job failed",
+  "Inhalt gemeldet": "Content reported",
+  "Anwendungs- / Workerfehler": "Application / worker error",
+  "Protokoll hochgeladen": "Protocol uploaded",
+  "Neue E-Mail-Adresse": "New email address",
+  "Empfänger entfernen": "Remove recipient",
+  "Benachrichtigungen gespeichert.": "Notifications saved.",
+  "Empfänger entfernt.": "Recipient removed.",
+  "Bitte eine gültige E-Mail-Adresse eingeben.": "Enter a valid email address.",
+  "Diese E-Mail-Adresse ist bereits eingetragen.": "This email address is already listed.",
+  "Jobfehler werden nach allen Wiederholungen gemeldet. Gleiche Anwendungsfehler werden für 15 Minuten zusammengefasst.": "Job failures are reported after all retries. Repeated application errors are grouped for 15 minutes."
 }

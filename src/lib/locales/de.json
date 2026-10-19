@@ -758,5 +758,18 @@
   "faq.report.question": "Wie melde ich ein fehlerhaftes oder problematisches Protokoll?",
   "faq.report.answer": "Öffne die Veranstaltungsseite und nutze dort die Funktion zum Melden von Fehlern oder problematischen Inhalten. Die Fachschaft prüft den Hinweis.",
   "imprint.content": "Das PPI ist eine Plattform der Fachschaft Informatik. Diese ist Teil der Universität Tübingen, welche durch den Rektor vertreten wird. Siehe das",
-  "imprint.link": "Impressum der Website der fsi"
+  "imprint.link": "Impressum der Website der fsi",
+  "E-Mail-Adresse": "E-Mail-Adresse",
+  "E-Mail-Benachrichtigungen": "E-Mail-Benachrichtigungen",
+  "Job fehlgeschlagen": "Job fehlgeschlagen",
+  "Inhalt gemeldet": "Inhalt gemeldet",
+  "Anwendungs- / Workerfehler": "Anwendungs- / Workerfehler",
+  "Protokoll hochgeladen": "Protokoll hochgeladen",
+  "Neue E-Mail-Adresse": "Neue E-Mail-Adresse",
+  "Empfänger entfernen": "Empfänger entfernen",
+  "Benachrichtigungen gespeichert.": "Benachrichtigungen gespeichert.",
+  "Empfänger entfernt.": "Empfänger entfernt.",
+  "Bitte eine gültige E-Mail-Adresse eingeben.": "Bitte eine gültige E-Mail-Adresse eingeben.",
+  "Diese E-Mail-Adresse ist bereits eingetragen.": "Diese E-Mail-Adresse ist bereits eingetragen.",
+  "Jobfehler werden nach allen Wiederholungen gemeldet. Gleiche Anwendungsfehler werden für 15 Minuten zusammengefasst.": "Jobfehler werden nach allen Wiederholungen gemeldet. Gleiche Anwendungsfehler werden für 15 Minuten zusammengefasst."
 }

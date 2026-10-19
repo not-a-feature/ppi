@@ -5,10 +5,12 @@ import { execFile } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import nodemailer from 'nodemailer';
 import { renderEmailHtml } from '../src/lib/server/email.js';
+import { recordSystemFailure } from '../src/lib/server/admin-alerts.js';
 import { pool, transaction } from '../src/lib/server/db.js';
 import { completeFileCheck, processPeriodicGrant } from '../src/lib/server/domain/index.js';
 import {
   cleanupExpiredAuthData,
+  collectAdminJobAlerts,
   currentGrantPeriod,
   dispatchOutbox,
   getBoss,
@@ -232,6 +234,7 @@ async function runQueue(name: (typeof queueNames)[number]) {
 }
 async function maintainWorker() {
   let nextCleanup = 0;
+  let nextAlerts = 0;
   while (!stopping) {
     await pool.query(
       'INSERT INTO worker_heartbeat(id) VALUES($1) ON CONFLICT(id) DO UPDATE SET last_seen=now()',
@@ -240,6 +243,10 @@ async function maintainWorker() {
     for (let batch = 0; batch < 10 && !stopping; batch++) {
       const dispatched = (await dispatchOutbox())!;
       if (dispatched < 50) break;
+    }
+    if (Date.now() >= nextAlerts) {
+      await collectAdminJobAlerts();
+      nextAlerts = Date.now() + 30000;
     }
     if (Date.now() >= nextCleanup) {
       const archives = await cleanupExpiredArchives();
@@ -251,7 +258,21 @@ async function maintainWorker() {
   }
 }
 console.log(`PPI worker ${workerId} started${development ? ' (development checks)' : ''}.`);
-await Promise.all([maintainWorker(), ...queueNames.map(runQueue)]);
+let finishedNormally = false;
+try {
+  await Promise.all([maintainWorker(), ...queueNames.map(runQueue)]);
+  finishedNormally = true;
+} finally {
+  if (!finishedNormally) {
+    stopping = true;
+    await recordSystemFailure(
+      'worker',
+      new Error('Worker stopped unexpectedly.'),
+      '',
+      `worker:${workerId}`
+    ).catch(() => console.error('Could not queue worker failure notification.'));
+  }
+}
 await boss.stop({ graceful: true, timeout: 30000 });
 await pool.query('DELETE FROM worker_heartbeat WHERE id=$1', [workerId]);
 await pool.end();

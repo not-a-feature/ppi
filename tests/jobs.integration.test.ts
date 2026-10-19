@@ -3,8 +3,9 @@ import { readdir, readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import pg from 'pg';
 import type { PgBoss } from 'pg-boss';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Actor } from '../src/lib/server/domain';
+import { termOptions } from '../src/lib/terms';
 
 describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and controls', () => {
   const suffix = randomUUID().replaceAll('-', '');
@@ -15,6 +16,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
   let boss: PgBoss;
   let jobs: typeof import('../src/lib/server/jobs');
   let domain: typeof import('../src/lib/server/domain');
+  let alerts: typeof import('../src/lib/server/admin-alerts');
   let admin: Actor;
   let student: Actor;
   const secret = 'one-time-reset-secret-not-for-job-ui';
@@ -29,6 +31,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
     ({ pool } = await import('../src/lib/server/db'));
     domain = await import('../src/lib/server/domain');
     jobs = await import('../src/lib/server/jobs');
+    alerts = await import('../src/lib/server/admin-alerts');
     for (const name of (await readdir('migrations'))
       .filter((name) => name.endsWith('.sql'))
       .sort()) {
@@ -312,6 +315,190 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
         ])
       ).rowCount
     ).toBe(1);
+  });
+
+  it('admin alerts restrict configuration, allow outside addresses, and respect upload/report choices and replay', async () => {
+    const preferences = {
+      job_failed: false,
+      system_error: false,
+      content_reported: true,
+      protocol_uploaded: true
+    };
+    await expect(
+      alerts.saveAdminAlertRecipient(
+        { ...student, isAdmin: true },
+        { email: 'redaction@example.org', ...preferences }
+      )
+    ).rejects.toMatchObject({ code: 'admin_required' });
+    await expect(
+      alerts.saveAdminAlertRecipient(admin, {
+        email: 'bad\r\nBcc:other@example.org',
+        ...preferences
+      })
+    ).rejects.toMatchObject({ code: 'invalid_alert_email' });
+    const recipient = await alerts.saveAdminAlertRecipient(admin, {
+      email: 'Redaction+PPI@Example.org',
+      ...preferences
+    });
+    await expect(
+      alerts.saveAdminAlertRecipient(admin, { email: 'redaction+ppi@example.org', ...preferences })
+    ).rejects.toMatchObject({ code: 'duplicate_alert_email' });
+    const lecture = await domain.createLecture(admin, 'Admin alert fixture');
+    const input = {
+      file: {
+        storageKey: randomUUID(),
+        sha256: 'a'.repeat(64),
+        byteCount: 12,
+        mediaType: 'text/plain' as const,
+        originalName: 'alert.txt'
+      },
+      lectureIds: [lecture.id],
+      term: termOptions()[0].value,
+      remarks: 'Fixture',
+      collaboratorZx: [],
+      attested: true,
+      requestKey: randomUUID()
+    };
+    const submission = await domain.submitProtocol(student, input);
+    await domain.submitProtocol(student, input);
+    await domain.reviseProtocol(student, submission.submissionId, {
+      ...input,
+      file: { ...input.file, storageKey: randomUUID() },
+      requestKey: randomUUID()
+    });
+    const report = {
+      lectureId: lecture.id,
+      category: 'metadata' as const,
+      explanation: 'Fixture',
+      requestKey: randomUUID()
+    };
+    await domain.reportContent(student, report);
+    await domain.reportContent(student, report);
+    const mail = (
+      await pool.query(
+        'SELECT recipient,body,admin_alert_type FROM email_outbox WHERE recipient=$1',
+        ['redaction+ppi@example.org']
+      )
+    ).rows;
+    expect(mail.map((row) => row.admin_alert_type).sort()).toEqual([
+      'content_reported',
+      'protocol_uploaded',
+      'protocol_uploaded'
+    ]);
+    expect(
+      mail
+        .filter((row) => row.admin_alert_type === 'protocol_uploaded')
+        .every((row) => row.body.includes(`/admin/review/${submission.submissionId}`))
+    ).toBe(true);
+    expect(
+      (
+        await pool.query('SELECT count(*)::integer count FROM "user" WHERE email=$1', [
+          'redaction+ppi@example.org'
+        ])
+      ).rows[0].count
+    ).toBe(0);
+    await alerts.saveAdminAlertRecipient(admin, {
+      id: recipient.id,
+      email: 'redaction+ppi@example.org',
+      ...preferences,
+      protocol_uploaded: false
+    });
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::integer count FROM email_outbox WHERE recipient=$1 AND admin_alert_type='protocol_uploaded' AND body<>''",
+          ['redaction+ppi@example.org']
+        )
+      ).rows[0].count
+    ).toBe(0);
+    await alerts.removeAdminAlertRecipient(admin, recipient.id);
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::integer count FROM email_outbox WHERE recipient=$1 AND body<>''",
+          ['redaction+ppi@example.org']
+        )
+      ).rows[0].count
+    ).toBe(0);
+  });
+
+  it('admin alerts report terminal job failures once, skip retries and prevent alert-email loops', async () => {
+    const recipient = await alerts.saveAdminAlertRecipient(admin, {
+      email: 'jobs@example.org',
+      job_failed: true,
+      system_error: false,
+      content_reported: false,
+      protocol_uploaded: false
+    });
+    const failed = (await boss.send('file_check', {}))!;
+    const retry = (await boss.send('file_check', {}))!;
+    await pool.query(
+      `UPDATE "${bossSchema}".job SET state='failed',completed_on=clock_timestamp() WHERE id=$1`,
+      [failed]
+    );
+    await pool.query(`UPDATE "${bossSchema}".job SET state='retry' WHERE id=$1`, [retry]);
+    await jobs.collectAdminJobAlerts();
+    const mails = (
+      await pool.query(
+        "SELECT id,body FROM email_outbox WHERE recipient='jobs@example.org' AND admin_alert_type='job_failed'"
+      )
+    ).rows;
+    expect(mails).toHaveLength(1);
+    expect(mails[0].body).toContain(`/admin/jobs/${failed}`);
+    const mailJob = (await boss.send('notification', { emailId: mails[0].id }))!;
+    await pool.query(
+      `UPDATE "${bossSchema}".job SET state='failed',completed_on=clock_timestamp() WHERE id=$1`,
+      [mailJob]
+    );
+    await jobs.collectAdminJobAlerts();
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::integer count FROM email_outbox WHERE recipient='jobs@example.org'"
+        )
+      ).rows[0].count
+    ).toBe(1);
+    await alerts.removeAdminAlertRecipient(admin, recipient.id);
+  });
+
+  it('admin alerts group application failures without emailing exception details and detect stale workers once', async () => {
+    const recipient = await alerts.saveAdminAlertRecipient(admin, {
+      email: 'errors@example.org',
+      job_failed: false,
+      system_error: true,
+      content_reported: false,
+      protocol_uploaded: false
+    });
+    const logging = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failure = new Error('password=private-test-secret');
+    await alerts.recordSystemFailure('web', failure, 'GET /lectures/[id]');
+    await alerts.recordSystemFailure('web', failure, 'GET /lectures/[id]');
+    logging.mockRestore();
+    const mail = (
+      await pool.query("SELECT body FROM email_outbox WHERE recipient='errors@example.org'")
+    ).rows;
+    expect(mail).toHaveLength(1);
+    expect(mail[0].body).toContain('GET /lectures/[id]');
+    expect(mail[0].body).not.toContain('private-test-secret');
+    await pool.query(
+      "UPDATE admin_alert_recipient SET updated_at=now()-interval '10 minutes' WHERE id=$1",
+      [recipient.id]
+    );
+    const worker = randomUUID();
+    await pool.query(
+      "INSERT INTO worker_heartbeat(id,last_seen) VALUES($1,now()-interval '3 minutes')",
+      [worker]
+    );
+    await jobs.collectAdminJobAlerts();
+    await jobs.collectAdminJobAlerts();
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::integer count FROM email_outbox WHERE recipient='errors@example.org'"
+        )
+      ).rows[0].count
+    ).toBe(2);
+    await alerts.removeAdminAlertRecipient(admin, recipient.id);
   });
 
   it('does not repeat grant credits after replay and rejects retrying or cancelling completed work', async () => {

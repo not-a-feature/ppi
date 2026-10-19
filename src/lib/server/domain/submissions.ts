@@ -15,6 +15,7 @@ import { isValidTerm } from '../../terms.js';
 import { proposeLectures, resolveExaminerName } from './catalogue.js';
 import { checkUploadLimits } from '../upload-limits.js';
 import { MAX_FILE_BYTES } from '../../file-limits.js';
+import { queueAdminAlert } from '../admin-alerts.js';
 
 async function creditsDashboard(client: PoolClient, actor: Actor, requestedLedgerPage: number) {
   requireCondition(
@@ -329,6 +330,12 @@ export async function submitProtocol(actor: Actor, input: SubmissionInput) {
         ]);
         const result = await appendRevision(client, submissionId, 1, input, actual);
         await audit(client, actor.id, 'submission.created', submissionId);
+        await queueAdminAlert(client, {
+          type: 'protocol_uploaded',
+          key: result.revisionId,
+          text: 'Ein neues Protokoll wurde hochgeladen.',
+          path: `/admin/review/${submissionId}`
+        });
         return result;
       }
     );
@@ -375,6 +382,12 @@ export async function reviseProtocol(actor: Actor, submissionId: string, input: 
         );
         await audit(client, actor.id, 'submission.revised', submissionId, {
           revisionId: result.revisionId
+        });
+        await queueAdminAlert(client, {
+          type: 'protocol_uploaded',
+          key: result.revisionId,
+          text: 'Eine Verbesserung wurde hochgeladen.',
+          path: `/admin/review/${submissionId}`
         });
         return result;
       }
