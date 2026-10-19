@@ -51,6 +51,8 @@ Upload quotas are checked before writing and again under an account lock when co
 
 Admin settings allow any email address with separate choices for exhausted job failures, content reports, application/worker errors and uploads (including improvements). Alerts use the existing mail queue; worker crash alerts can arrive after restart. Repeated application errors are grouped into 15-minute windows. Abruptly stopped workers are detected after a missed two-minute heartbeat by a running worker. Complete server outages require external monitoring. Alert emails contain links and references, without protocol content or exception details.
 
+Account cleanup defaults to the first of every month at 03:00 Europe/Berlin. It processes at most 100 accounts per transaction and repeats until eligible accounts are handled. Credentials, sessions, profile fields, private notes, queued personal mail and access grants are removed; contributed files, ledger entries and audit references remain. Historical protocol content and free-text audit/financial records are not rewritten. The last active administrator is skipped. The schedule can be disabled or reduced to every three or six months under administration; disabling it survives restarts. Job results show the number removed and protected administrators.
+
 ## Backup and release
 
 1. Put the proxy in maintenance mode and prevent new worker jobs and schedules from starting.

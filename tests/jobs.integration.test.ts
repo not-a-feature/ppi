@@ -94,6 +94,33 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
     await pool.query(`DELETE FROM "${bossSchema}".job WHERE id=ANY($1::uuid[])`, [ids]);
   });
 
+  it('installs monthly account cleanup and allows only slow admin-controlled schedules', async () => {
+    expect(await jobs.getAccountCleanupSchedule(admin)).toEqual({
+      enabled: true,
+      cron: '0 3 1 * *'
+    });
+    await expect(
+      jobs.updateAccountCleanupSchedule(student, { enabled: false, cron: '0 3 1 * *' })
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      jobs.updateAccountCleanupSchedule(admin, { enabled: true, cron: '0 3 * * *' })
+    ).rejects.toMatchObject({ status: 400 });
+    await jobs.updateAccountCleanupSchedule(admin, { enabled: true, cron: '0 3 1 */3 *' });
+    expect(await jobs.getAccountCleanupSchedule(admin)).toEqual({
+      enabled: true,
+      cron: '0 3 1 */3 *'
+    });
+    await jobs.updateAccountCleanupSchedule(admin, { enabled: false, cron: '0 3 1 */3 *' });
+    expect((await jobs.getAccountCleanupSchedule(admin)).enabled).toBe(false);
+    expect(
+      (
+        await pool.query(
+          "SELECT schedule_initialized FROM queue_control WHERE name='account_cleanup'"
+        )
+      ).rows[0].schedule_initialized
+    ).toBe(true);
+  });
+
   it('rolls back the email record when its durable outbox insert fails', async () => {
     await pool.query(
       `CREATE FUNCTION reject_test_job() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced outbox failure'; END $$`
@@ -162,7 +189,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
     expect(JSON.stringify(response)).not.toContain(secret);
     expect(JSON.stringify(response)).not.toContain(student.email);
     expect(response.jobs[0]).not.toHaveProperty('data');
-    const schedule = { enabled: false, cron: '0 0 1 1,7 *' };
+    const schedule = { enabled: false, cron: '0 0 1 4,10 *' };
     expect(await jobs.getGrantSchedule(admin)).toEqual(schedule);
     await jobs.updateGrantSchedule(admin, { ...schedule, enabled: true });
     expect(await jobs.getGrantSchedule(admin)).toEqual({ ...schedule, enabled: true });

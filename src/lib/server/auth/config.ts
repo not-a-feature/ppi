@@ -113,6 +113,13 @@ export function createAuth(plugins: BetterAuthOptions['plugins'] = [], building 
             if (!(await currentActor(session.userId))) {
               throw new APIError('FORBIDDEN', { message: 'This account is not active.' });
             }
+            const active = await pool.query(
+              `UPDATE ppi_user SET last_login_at=now()
+              WHERE user_id=$1 AND status='active' AND anonymized_at IS NULL RETURNING user_id`,
+              [session.userId]
+            );
+            if (!active.rowCount)
+              throw new APIError('FORBIDDEN', { message: 'This account is not active.' });
             return { data: session };
           },
           async after(session) {

@@ -147,6 +147,10 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL authentication', () 
     ).rows[0].count;
     const signedIn = await auth.api.signInEmail({ body: { email, password }, returnHeaders: true });
     expect(signedIn.response.token).toBeTruthy();
+    expect(
+      (await pool.query('SELECT last_login_at FROM ppi_user WHERE user_id=$1', [userId])).rows[0]
+        .last_login_at
+    ).toBeInstanceOf(Date);
     const sessionHeaders = new Headers({
       cookie: signedIn.headers
         .getSetCookie()

@@ -78,10 +78,12 @@ export async function listAdminUsersPage(
     await currentActor(client, actor, true);
     const from = `FROM "user" u JOIN ppi_user p ON p.user_id=u.id LEFT JOIN credit_account c ON c.user_id=u.id`;
     const values = search ? [search] : [];
-    const filter = search
-      ? `WHERE strpos(lower(u.email),lower($1))>0 OR strpos(lower(u.id),lower($1))>0
-      OR strpos(lower(p.status),lower($1))>0 OR strpos(COALESCE(c.balance,0)::text,$1)>0`
-      : '';
+    const filter = `WHERE p.anonymized_at IS NULL${
+      search
+        ? ` AND (strpos(lower(u.email),lower($1))>0 OR strpos(lower(u.id),lower($1))>0
+      OR strpos(lower(p.status),lower($1))>0 OR strpos(COALESCE(c.balance,0)::text,$1)>0)`
+        : ''
+    }`;
     const total =
       options.paginate === false
         ? 0

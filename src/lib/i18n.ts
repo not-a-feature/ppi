@@ -50,6 +50,7 @@ const statuses: Record<string, MessageKey> = {
   suspended: 'Gesperrt',
   unverified: 'E-Mail unbestätigt',
   deletion_pending: 'Löschung beantragt',
+  deleted: 'Gelöschtes Konto',
   clean: 'Datei geprüft',
   manual_review: 'Manuelle Prüfung',
   granted: 'Angenommen',
@@ -108,7 +109,8 @@ const queues: Record<string, MessageKey> = {
   notification: 'Benachrichtigungen',
   periodic_grant: 'Tokengutschrift',
   prepare_archive: 'ZIP-Datei vorbereiten',
-  delete_files: 'Dateien löschen'
+  delete_files: 'Dateien löschen',
+  account_cleanup: 'Alte Konten löschen'
 };
 export function queueLabel(language: Language, name: string): string {
   return Object.hasOwn(queues, name) ? t(language, queues[name]) : name;

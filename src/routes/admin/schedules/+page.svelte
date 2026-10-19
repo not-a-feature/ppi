@@ -41,7 +41,7 @@
           name="cron"
           required
           value={data.schedule.cron}
-        /><small>{t(language, 'Beispiel: 0 0 1 1,7 * (1. Januar und 1. Juli).')}</small></label
+        /><small>{t(language, 'Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).')}</small></label
       ><button>{t(language, 'Zeitplan speichern')}</button>
     </form>
   </section>
@@ -57,3 +57,34 @@
     </form>
   </aside>
 </div>
+<section class="card" style="margin-top:1.5rem">
+  <h2>{t(language, 'Alte Konten löschen')}</h2>
+  <p>
+    {t(
+      language,
+      'Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.'
+    )}
+  </p>
+  <form method="POST" action={namedAction(page.url, 'cleanupSchedule')}>
+    <label
+      ><input type="checkbox" name="enabled" checked={data.cleanupSchedule.enabled} />{t(
+        language,
+        'Zeitplan aktivieren'
+      )}</label
+    >
+    <label
+      >{t(language, 'Häufigkeit')}<select name="cron">
+        <option value="0 3 1 * *" selected={data.cleanupSchedule.cron === '0 3 1 * *'}
+          >{t(language, 'Monatlich')}</option
+        >
+        <option value="0 3 1 */3 *" selected={data.cleanupSchedule.cron === '0 3 1 */3 *'}
+          >{t(language, 'Alle 3 Monate')}</option
+        >
+        <option value="0 3 1 */6 *" selected={data.cleanupSchedule.cron === '0 3 1 */6 *'}
+          >{t(language, 'Alle 6 Monate')}</option
+        >
+      </select><small>{t(language, 'Am 1. des Monats um 03:00 Uhr (Europe/Berlin).')}</small></label
+    >
+    <button>{t(language, 'Zeitplan speichern')}</button>
+  </form>
+</section>

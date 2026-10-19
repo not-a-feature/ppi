@@ -102,7 +102,6 @@
   "Bei einer Überarbeitungsanfrage können keine Tokens vergeben werden.": "Requesting changes cannot award tokens.",
   "Bei erbetener Überarbeitung werden keine Tokens vergeben.": "No tokens are awarded when changes are requested.",
   "Bei gleichen Anteilen wird pro Person aufgerundet. Die tatsächlich ausgegebene Gesamtsumme kann dadurch die nominale Belohnung übersteigen.": "Equal shares are rounded up for each person. The total issued may therefore exceed the nominal reward.",
-  "Beispiel: 0 0 1 1,7 * (1. Januar und 1. Juli).": "Example: 0 0 1 1,7 * (1 January and 1 July).",
   "Beiträge ansehen": "View submissions",
   "Beiträge prüfen. Wissen freigeben.": "Review submissions. Share knowledge.",
   "Beitragsbelohnung": "Contribution reward",
@@ -818,5 +817,13 @@
   "Einreichungen in Verarbeitung": "Submissions being processed",
   "Warten auf Verbesserung": "Awaiting student improvement",
   "Keine prüfbereiten Einreichungen.": "No submissions ready for review.",
-  "Aktueller Stand": "Current status"
+  "Aktueller Stand": "Current status",
+  "Alte Konten löschen": "Delete old accounts",
+  "Gelöschtes Konto": "Deleted account",
+  "Häufigkeit": "Frequency",
+  "Alle 3 Monate": "Every 3 months",
+  "Alle 6 Monate": "Every 6 months",
+  "Am 1. des Monats um 03:00 Uhr (Europe/Berlin).": "On the first of the month at 03:00 (Europe/Berlin).",
+  "Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.": "After two years without a login, credentials and profile details are removed. For accounts that have never logged in, registration age is used. Protocols and transactions remain; the last active administrator is protected.",
+  "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).": "Example: 0 0 1 4,10 * (1 April and 1 October)."
 }

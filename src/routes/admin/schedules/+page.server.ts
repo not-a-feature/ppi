@@ -1,17 +1,36 @@
 import { getPeriodicGrantPreview } from '$lib/server/domain';
-import { getGrantSchedule, runGrantNow, updateGrantSchedule } from '$lib/server/jobs';
+import {
+  getGrantSchedule,
+  runGrantNow,
+  updateGrantSchedule,
+  getAccountCleanupSchedule,
+  updateAccountCleanupSchedule
+} from '$lib/server/jobs';
 
 import { admin, field, actionResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
   const current = admin(locals);
-  const [schedule, grantPreview] = await Promise.all([
+  const [schedule, grantPreview, cleanupSchedule] = await Promise.all([
     getGrantSchedule(current),
-    getPeriodicGrantPreview(current)
+    getPeriodicGrantPreview(current),
+    getAccountCleanupSchedule(current)
   ]);
-  return { schedule, grantPreview };
+  return { schedule, grantPreview, cleanupSchedule };
 };
 export const actions: Actions = {
+  cleanupSchedule: async ({ locals, request }) => {
+    const current = admin(locals),
+      form = await request.formData();
+    return actionResult(
+      () =>
+        updateAccountCleanupSchedule(current, {
+          enabled: form.get('enabled') === 'on',
+          cron: field(form, 'cron')
+        }),
+      'Der Zeitplan wurde gespeichert.'
+    );
+  },
   grant: async ({ locals }) => {
     const current = admin(locals);
     return actionResult(

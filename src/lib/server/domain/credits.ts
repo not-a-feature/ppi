@@ -434,16 +434,22 @@ export async function processPeriodicGrant(period: string, batchSize = 250) {
       )
     ).rows;
     for (const user of users) {
-      await credit(
-        client,
-        user.user_id,
-        run.amount,
-        'periodic_grant',
-        `grant:${period}:${user.user_id}`,
-        run.policy_version,
-        null,
-        `Periodic grant ${period}`
+      const eligible = await client.query(
+        `SELECT id FROM "user" WHERE id=$1 AND "emailVerified"
+        AND email ~ '^zx[a-z]{3}[0-9]{2}@student[.]uni-tuebingen[.]de$' FOR SHARE`,
+        [user.user_id]
       );
+      if (eligible.rowCount)
+        await credit(
+          client,
+          user.user_id,
+          run.amount,
+          'periodic_grant',
+          `grant:${period}:${user.user_id}`,
+          run.policy_version,
+          null,
+          `Periodic grant ${period}`
+        );
       await client.query(
         'UPDATE grant_recipient SET processed_at=now() WHERE period=$1 AND user_id=$2',
         [period, user.user_id]

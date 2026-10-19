@@ -18,7 +18,8 @@ export const queueNames = [
   'notification',
   'periodic_grant',
   'prepare_archive',
-  'delete_files'
+  'delete_files',
+  'account_cleanup'
 ] as const;
 let instance: Promise<PgBoss> | undefined;
 export function getBoss(mode: DatabaseMode = 'runtime'): Promise<PgBoss> {
@@ -39,6 +40,27 @@ export function getBoss(mode: DatabaseMode = 'runtime'): Promise<PgBoss> {
         expireInSeconds: 300,
         retentionSeconds: 7 * 86400
       });
+    await transaction(async (client) => {
+      const control = (
+        await client.query(
+          "SELECT schedule_initialized FROM queue_control WHERE name='account_cleanup' FOR UPDATE"
+        )
+      ).rows[0];
+      if (!control.schedule_initialized) {
+        await boss.schedule(
+          'account_cleanup',
+          '0 3 1 * *',
+          {},
+          {
+            tz: 'Europe/Berlin',
+            db: { executeSql: (text, values) => client.query(text, values) }
+          }
+        );
+        await client.query(
+          "UPDATE queue_control SET schedule_initialized=true WHERE name='account_cleanup'"
+        );
+      }
+    });
     return boss;
   })());
 }
@@ -275,7 +297,33 @@ export async function getJobs(
 export async function getGrantSchedule(actor: Actor) {
   await requireAdmin(actor);
   const schedule = await (await getBoss()).getSchedule('periodic_grant');
-  return { enabled: !!schedule, cron: schedule?.cron ?? '0 0 1 1,7 *' };
+  return { enabled: !!schedule, cron: schedule?.cron ?? '0 0 1 4,10 *' };
+}
+export async function getAccountCleanupSchedule(actor: Actor) {
+  await requireAdmin(actor);
+  const schedule = await (await getBoss()).getSchedule('account_cleanup');
+  return { enabled: !!schedule, cron: schedule?.cron ?? '0 3 1 * *' };
+}
+export async function updateAccountCleanupSchedule(
+  actor: Actor,
+  input: { enabled: boolean; cron: string }
+) {
+  await requireAdmin(actor);
+  if (!['0 3 1 * *', '0 3 1 */3 *', '0 3 1 */6 *'].includes(input.cron))
+    throw new DomainError(400, 'invalid_cron', 'Ungültiger Cron-Zeitplan.');
+  const boss = await getBoss();
+  await transaction(async (client) => {
+    const options = {
+      db: { executeSql: (text: string, values: unknown[]) => client.query(text, values) }
+    };
+    if (input.enabled)
+      await boss.schedule('account_cleanup', input.cron, {}, { ...options, tz: 'Europe/Berlin' });
+    else await boss.unschedule('account_cleanup', '', options);
+    await client.query(
+      'INSERT INTO audit_event(actor_id,action,entity_id,detail) VALUES($1,$2,$3,$4)',
+      [actor.id, 'schedule.update', 'account_cleanup', JSON.stringify(input)]
+    );
+  });
 }
 async function audit(actor: Actor, action: string, id: string, detail: object = {}) {
   await pool.query(

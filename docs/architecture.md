@@ -18,7 +18,9 @@ Routes call ordinary domain functions. SQL uses node-postgres parameters and exp
 
 ## Accounts and access
 
-Every account, including administrators, needs a verified `zx[a-z]{3}[0-9]{2}@student.uni-tuebingen.de` address. An administrator can set another eligible account's admin flag. The initial administrator uses `scripts/bootstrap-admin.ts`. Suspension and deletion requests revoke access; contributed protocols remain.
+Every login account, including administrators, needs a verified `zx[a-z]{3}[0-9]{2}@student.uni-tuebingen.de` address. An administrator can set another eligible account's admin flag. The initial administrator uses `scripts/bootstrap-admin.ts`. Suspension and deletion requests revoke access; contributed protocols remain.
+
+A monthly worker job removes credentials and identifying profile fields after two years without a login, using registration age when no login is recorded. It preserves protocol ownership, ledger entries and audit references through a non-login account record. The last active administrator is protected. Login timestamps are stored separately from retained audit logs. Administrators can disable cleanup or choose three- or six-month intervals.
 
 Permissions are checked on the server against current account state. Private files are served through authorised endpoints. Students need current lecture access; multi-lecture protocols require access to any assigned lecture. Administrator review access is audited. Internal user notes and extracted document text stay out of student responses.
 
@@ -32,7 +34,7 @@ Technical checks block unsafe files. Duplicate, similarity, content and metadata
 
 ## Tokens
 
-Defaults are configurable through administration: 5 tokens after verification, 3 for a contribution, 6 for an excellent contribution, 1 for four weeks of lecture access, and a periodic grant of 2. The periodic schedule must be reconciled before production activation.
+Defaults are configurable through administration: 5 tokens after verification, 3 for a contribution, 6 for an excellent contribution, 1 for four weeks of lecture access, and a periodic grant of 2. The default grant dates are 1 April and 1 October at midnight in Europe/Berlin. Reconcile the schedule before production activation.
 
 Rewards are shared equally between distinct registered, verified, active contributors, including the uploader, rounding each share upward. Unknown collaborators are ignored. Recipients freeze at the first award; improvements receive no reward. Corrections use explicit administrator adjustments.
 

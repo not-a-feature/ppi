@@ -20,6 +20,7 @@ import {
 import { detectFile, filePath, readStoredFile } from '../src/lib/server/storage.js';
 import { cleanupExpiredArchives, prepareArchive } from '../src/lib/server/archives.js';
 import { cleanupDeletedProtocolFiles } from '../src/lib/server/deletion.js';
+import { cleanupInactiveAccounts } from '../src/lib/server/account-cleanup.js';
 import { analyzeFileContent, markContentCheckFailed } from '../src/lib/server/content-checks.js';
 import { processPdfOcr } from '../src/lib/server/pdf-processing.js';
 
@@ -155,11 +156,12 @@ async function sendNotification(data: Record<string, unknown>) {
   } else {
     const item = (
       await pool.query(
-        'SELECT n.id,u.email AS recipient,n.subject,n.message AS body FROM notification n JOIN "user" u ON u.id=n.user_id WHERE n.id=$1',
+        `SELECT n.id,u.email AS recipient,n.subject,n.message AS body FROM notification n JOIN "user" u ON u.id=n.user_id
+         JOIN ppi_user p ON p.user_id=u.id WHERE n.id=$1 AND p.anonymized_at IS NULL`,
         [data.notificationId]
       )
     ).rows[0];
-    assert(item, 'Notification missing');
+    if (!item) return;
     mail = item;
   }
   await transport.sendMail({
@@ -191,6 +193,7 @@ async function runQueue(name: (typeof queueNames)[number]) {
       continue;
     }
     const attempt = { id: job.id, retryCount: job.retryCount };
+    let output: Record<string, unknown> | undefined;
     try {
       if (job.data.outboxId)
         await pool.query("UPDATE core_job SET status='running',attempts=attempts+1 WHERE id=$1", [
@@ -204,6 +207,16 @@ async function runQueue(name: (typeof queueNames)[number]) {
       if (name === 'notification') await sendNotification(job.data);
       if (name === 'prepare_archive') await prepareArchive(String(job.data.archiveId));
       if (name === 'delete_files') await cleanupDeletedProtocolFiles(String(job.data.submissionId));
+      if (name === 'account_cleanup') {
+        let more = true;
+        let deleted = 0;
+        while (more) {
+          const result = await cleanupInactiveAccounts();
+          deleted += result.deleted;
+          more = result.more;
+          output = { deleted, protectedAdmins: result.protectedAdmins, cutoff: result.cutoff };
+        }
+      }
       if (name === 'periodic_grant') {
         const period = typeof job.data.period === 'string' ? job.data.period : currentGrantPeriod();
         let remaining = 1;
@@ -217,7 +230,7 @@ async function runQueue(name: (typeof queueNames)[number]) {
           "UPDATE core_job SET status='completed',error='',finished_at=now() WHERE id=$1",
           [job.data.outboxId]
         );
-      await boss.complete(name, attempt);
+      await boss.complete(name, attempt, output);
     } catch (error) {
       if (error instanceof AssertionError) throw error;
       if (name === 'content_check')

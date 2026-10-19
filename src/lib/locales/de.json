@@ -102,7 +102,6 @@
   "Bei einer Überarbeitungsanfrage können keine Tokens vergeben werden.": "Bei einer Überarbeitungsanfrage können keine Tokens vergeben werden.",
   "Bei erbetener Überarbeitung werden keine Tokens vergeben.": "Bei erbetener Überarbeitung werden keine Tokens vergeben.",
   "Bei gleichen Anteilen wird pro Person aufgerundet. Die tatsächlich ausgegebene Gesamtsumme kann dadurch die nominale Belohnung übersteigen.": "Bei gleichen Anteilen wird pro Person aufgerundet. Die tatsächlich ausgegebene Gesamtsumme kann dadurch die nominale Belohnung übersteigen.",
-  "Beispiel: 0 0 1 1,7 * (1. Januar und 1. Juli).": "Beispiel: 0 0 1 1,7 * (1. Januar und 1. Juli).",
   "Beiträge ansehen": "Beiträge ansehen",
   "Beiträge prüfen. Wissen freigeben.": "Beiträge prüfen. Wissen freigeben.",
   "Beitragsbelohnung": "Beitragsbelohnung",
@@ -818,5 +817,13 @@
   "Einreichungen in Verarbeitung": "Einreichungen in Verarbeitung",
   "Warten auf Verbesserung": "Warten auf Verbesserung",
   "Keine prüfbereiten Einreichungen.": "Keine prüfbereiten Einreichungen.",
-  "Aktueller Stand": "Aktueller Stand"
+  "Aktueller Stand": "Aktueller Stand",
+  "Alte Konten löschen": "Alte Konten löschen",
+  "Gelöschtes Konto": "Gelöschtes Konto",
+  "Häufigkeit": "Häufigkeit",
+  "Alle 3 Monate": "Alle 3 Monate",
+  "Alle 6 Monate": "Alle 6 Monate",
+  "Am 1. des Monats um 03:00 Uhr (Europe/Berlin).": "Am 1. des Monats um 03:00 Uhr (Europe/Berlin).",
+  "Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.": "Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.",
+  "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).": "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober)."
 }
