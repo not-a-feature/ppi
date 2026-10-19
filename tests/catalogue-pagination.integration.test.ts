@@ -132,6 +132,20 @@ describe.skipIf(!testUrl)('Catalogue and account pagination beyond 100 entries',
     await expect(domain.listLecturesPage(reader, { includeProposals: true })).rejects.toMatchObject(
       { status: 403 }
     );
+    const all = await domain.listLecturesPage(reader, { paginate: false });
+    const comparable = (items: Record<string, any>[]) =>
+      items.map((row) => ({
+        ...row,
+        expires_at: row.expires_at ? new Date(row.expires_at).toISOString() : null
+      }));
+    expect(comparable(all.items)).toEqual(comparable(pages.flatMap((page) => page.items)));
+    expect(
+      comparable(
+        (await domain.listLecturesPage(reader, { onlyWithProtocols: true, paginate: false })).items
+      )
+    ).toEqual(
+      comparable((await domain.listLecturesPage(reader, { onlyWithProtocols: true })).items)
+    );
   });
   it('filters pending proposals across the full catalogue before pagination', async () => {
     const pending = await domain.listLecturesPage(admin, {

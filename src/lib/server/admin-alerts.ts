@@ -135,24 +135,19 @@ export async function queueAdminAlert(
   );
   if (!inserted.rowCount) return;
   const link = new URL(alert.path, process.env.ORIGIN ?? 'http://localhost:5173').href;
-  for (const recipient of recipients) {
-    const id = randomUUID();
-    await client.query(
-      `INSERT INTO email_outbox(id,recipient,subject,body,expires_at,admin_alert_type)
-      VALUES($1,$2,$3,$4,now()+interval '24 hours',$5)`,
-      [
-        id,
-        recipient.email,
-        `PPI | ${adminAlertEvents[alert.type]}`,
-        `${alert.text}\n\nIn PPI öffnen / Open in PPI:\n${link}`,
-        alert.type
-      ]
-    );
-    await client.query(
-      `INSERT INTO core_job(type,business_key,payload) VALUES('notification',$1,$2)`,
-      [`email:${id}`, JSON.stringify({ emailId: id })]
-    );
-  }
+  await client.query(
+    `WITH mail AS (
+    INSERT INTO email_outbox(recipient,subject,body,expires_at,admin_alert_type)
+    SELECT recipient,$2,$3,now()+interval '24 hours',$4 FROM unnest($1::text[]) recipient RETURNING id
+  ) INSERT INTO core_job(type,business_key,payload)
+    SELECT 'notification','email:'||id,jsonb_build_object('emailId',id) FROM mail`,
+    [
+      recipients.map((recipient) => recipient.email),
+      `PPI | ${adminAlertEvents[alert.type]}`,
+      `${alert.text}\n\nIn PPI öffnen / Open in PPI:\n${link}`,
+      alert.type
+    ]
+  );
 }
 
 export async function recordSystemFailure(

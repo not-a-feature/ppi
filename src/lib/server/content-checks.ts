@@ -6,6 +6,7 @@ import { getReadableSource, scheduleOcr } from './pdf-processing.js';
 import { currentActor, requireId, requireCondition, audit, type Actor } from './domain/shared.js';
 import {
   fingerprintText,
+  shingleSimilarity,
   MIN_CONTENT_WORDS,
   MIN_SIMILARITY_WORDS,
   REPETITION_THRESHOLD,
@@ -104,30 +105,28 @@ export async function analyzeFileContent(fileId: string, generation: number) {
         )
       ).rows[0].count
     );
-    const matches =
-      status === 'ready' && features.wordCount >= MIN_SIMILARITY_WORDS
-        ? (
-            await client.query<Match>(
-              `SELECT c.file_id AS "fileId", CASE WHEN c.text_hash=$3 THEN 1::float8 ELSE
-         overlap.n::float8/(cardinality(c.shingles)+cardinality($2::text[])-overlap.n) END AS score
+    const matches: Match[] = [];
+    if (status === 'ready' && features.wordCount >= MIN_SIMILARITY_WORDS) {
+      const candidates = (
+        await client.query<{ fileId: string; textHash: string; shingles: string[] }>(
+          `SELECT c.file_id AS "fileId",c.text_hash AS "textHash",CASE WHEN c.text_hash=$3 THEN '{}'::text[] ELSE c.shingles END shingles
        FROM file_content_check c JOIN stored_file f ON f.id=c.file_id
-       CROSS JOIN LATERAL (SELECT count(*) n FROM (SELECT unnest(c.shingles) INTERSECT SELECT unnest($2::text[])) shared) overlap
        WHERE c.file_id<>$1 AND c.status='ready' AND c.generation=f.safety_generation
          AND f.deleted_at IS NULL AND f.safety_status='clean' AND c.word_count >= $4
-         AND (c.text_hash=$3 OR (c.shingles && $2::text[]
-           AND cardinality(c.shingles) BETWEEN cardinality($2::text[])*$5::float8 AND cardinality($2::text[])/$5::float8))
-         AND (c.text_hash=$3 OR overlap.n::float8/NULLIF(cardinality(c.shingles)+cardinality($2::text[])-overlap.n,0)>=$5::float8)
-       ORDER BY score DESC,c.file_id LIMIT 5`,
-              [
-                fileId,
-                features.shingles,
-                features.textHash,
-                MIN_SIMILARITY_WORDS,
-                SIMILARITY_THRESHOLD
-              ]
-            )
-          ).rows
-        : [];
+         AND (c.text_hash=$3 OR cardinality(c.shingles) BETWEEN cardinality($2::text[])*$5::float8 AND cardinality($2::text[])/$5::float8)`,
+          [fileId, features.shingles, features.textHash, MIN_SIMILARITY_WORDS, SIMILARITY_THRESHOLD]
+        )
+      ).rows;
+      for (const candidate of candidates) {
+        const score =
+          candidate.textHash === features.textHash
+            ? 1
+            : shingleSimilarity(candidate.shingles, features.shingles);
+        if (score >= SIMILARITY_THRESHOLD) matches.push({ fileId: candidate.fileId, score });
+      }
+      matches.sort((a, b) => b.score - a.score || a.fileId.localeCompare(b.fileId));
+      matches.splice(5);
+    }
     await client.query(
       `INSERT INTO file_content_check(file_id,generation,status,reason,word_count,page_count,textless_pages,repeated_fraction,text_hash,shingles,similar_matches,compared_files)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)

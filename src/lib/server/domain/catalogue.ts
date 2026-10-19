@@ -28,18 +28,8 @@ async function paginatedCatalogue(
   values: unknown[],
   requestedPage: number,
   orderBy: string,
-  enrichment = '',
-  paginate = true
+  enrichment = ''
 ) {
-  if (!paginate) {
-    const items = (
-      await client.query(
-        `WITH selected AS (${sql}) SELECT selected.*${enrichment ? `,${enrichment}` : ''} FROM selected ORDER BY ${orderBy}`,
-        values
-      )
-    ).rows;
-    return { items, page: 1, total: items.length, pageSize: CATALOGUE_PAGE_SIZE };
-  }
   const sizeIndex = values.length + 1,
     pageIndex = values.length + 2;
   const result = (
@@ -104,7 +94,25 @@ export async function listLecturesPage(
       'admin_required',
       'Administrator permission is required.'
     );
-    // Keep the visibility lookup correlated instead of hashing all published protocols.
+    if (!paginate) {
+      const items = (
+        await client.query(
+          `WITH counts AS (
+        SELECT rl.lecture_id,count(*)::integer protocol_count
+        ${visibleLectureProtocols.replace('WHERE rl.lecture_id=l.id AND', 'WHERE')}
+        GROUP BY rl.lecture_id
+      ) SELECT l.*,coalesce(counts.protocol_count,0) protocol_count,a.expires_at
+      FROM lecture l LEFT JOIN counts ON counts.lecture_id=l.id
+      LEFT JOIN lecture_access a ON a.lecture_id=l.id AND a.user_id=$1 AND a.expires_at>now()
+      WHERE ($2='' OR l.name ILIKE '%'||$2||'%' OR EXISTS(SELECT 1 FROM unnest(l.aliases) alias WHERE alias ILIKE '%'||$2||'%'))
+      AND ($3 OR (l.approval_status='approved' AND NOT l.archived))
+      AND (NOT $4 OR coalesce(counts.protocol_count,0)>0) AND ($5='all' OR l.approval_status=$5)
+      ORDER BY l.name,l.id`,
+          [actor.id, search, includeProposals, onlyWithProtocols, approvalStatus]
+        )
+      ).rows;
+      return { items, page: 1, total: items.length, pageSize: CATALOGUE_PAGE_SIZE };
+    }
     return paginatedCatalogue(
       client,
       `SELECT l.* FROM lecture l
@@ -116,8 +124,7 @@ export async function listLecturesPage(
       page,
       'name,id',
       `(SELECT count(*)::integer ${visibleLectureProtocols.replace('rl.lecture_id=l.id', 'rl.lecture_id=selected.id')}) protocol_count,
-       (SELECT a.expires_at FROM lecture_access a WHERE a.lecture_id=selected.id AND a.user_id=$1 AND a.expires_at>now()) expires_at`,
-      paginate
+       (SELECT a.expires_at FROM lecture_access a WHERE a.lecture_id=selected.id AND a.user_id=$1 AND a.expires_at>now()) expires_at`
     );
   });
 }

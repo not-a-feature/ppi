@@ -82,9 +82,10 @@ export async function listAdminUsersPage(
       ? `WHERE strpos(lower(u.email),lower($1))>0 OR strpos(lower(u.id),lower($1))>0
       OR strpos(lower(p.status),lower($1))>0 OR strpos(COALESCE(c.balance,0)::text,$1)>0`
       : '';
-    const total = Number(
-      (await client.query(`SELECT count(*) ${from} ${filter}`, values)).rows[0].count
-    );
+    const total =
+      options.paginate === false
+        ? 0
+        : Number((await client.query(`SELECT count(*) ${from} ${filter}`, values)).rows[0].count);
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
@@ -93,7 +94,7 @@ export async function listAdminUsersPage(
         options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
-    return { entries, total, page, pageSize };
+    return { entries, total: options.paginate === false ? entries.length : total, page, pageSize };
   });
 }
 

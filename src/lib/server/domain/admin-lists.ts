@@ -71,10 +71,17 @@ export async function listAdminEntries(
         section === 'audit' ? 'false' : `status='${section === 'credits' ? 'pending' : 'open'}'`
       );
     const filter = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-    const total = Number(
-      (await client.query(`SELECT count(*) FROM (${queries[section]}) entry ${filter}`, values))
-        .rows[0].count
-    );
+    const total =
+      options.paginate === false
+        ? 0
+        : Number(
+            (
+              await client.query(
+                `SELECT count(*) FROM (${queries[section]}) entry ${filter}`,
+                values
+              )
+            ).rows[0].count
+          );
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
@@ -82,6 +89,6 @@ export async function listAdminEntries(
         options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
-    return { entries, page, total, pageSize };
+    return { entries, page, total: options.paginate === false ? entries.length : total, pageSize };
   });
 }

@@ -52,9 +52,10 @@ export async function listReviewQueuePage(
       );
     }
     const filter = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-    const total = Number(
-      (await client.query(`SELECT count(*) ${from} ${filter}`, values)).rows[0].count
-    );
+    const total =
+      options.paginate === false
+        ? 0
+        : Number((await client.query(`SELECT count(*) ${from} ${filter}`, values)).rows[0].count);
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
@@ -66,7 +67,7 @@ export async function listReviewQueuePage(
         options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
-    return { entries, total, page, pageSize };
+    return { entries, total: options.paginate === false ? entries.length : total, page, pageSize };
   });
 }
 

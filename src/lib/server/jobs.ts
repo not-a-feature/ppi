@@ -9,6 +9,7 @@ import {
 } from './db.js';
 import { DomainError, getActor, type Actor } from './domain/index.js';
 import { queueAdminAlert } from './admin-alerts.js';
+import { classifyJobFailure, jobFailures, type JobFailureCode } from '../job-failures.js';
 
 export const queueNames = [
   'file_check',
@@ -162,11 +163,30 @@ export async function getJob(actor: Actor, id: string) {
   requireJobId(id);
   await getBoss();
   const result = await pool.query(
-    `SELECT ${jobColumns} FROM "${queueSchema()}".job WHERE id=$1 AND name=ANY($2::text[])`,
+    `SELECT ${jobColumns},retry_count,retry_limit,
+      (SELECT error FROM core_job c WHERE c.id=j.id) failure_detail,
+      (SELECT finished_at FROM core_job c WHERE c.id=j.id) failure_time
+      FROM "${queueSchema()}".job j WHERE id=$1 AND name=ANY($2::text[])`,
     [id, queueNames]
   );
   if (!result.rows[0]) throw new DomainError(404, 'not_found', 'Job nicht gefunden.');
-  return serializeJob(result.rows[0]);
+  const row = result.rows[0];
+  const code: JobFailureCode =
+    typeof row.output?.code === 'string' && Object.hasOwn(jobFailures, row.output.code)
+      ? row.output.code
+      : classifyJobFailure(row.failure_detail || row.output?.message);
+  return {
+    ...serializeJob(row),
+    retryCount: row.retry_count,
+    retryLimit: row.retry_limit,
+    failure: ['failed', 'retry'].includes(row.state)
+      ? {
+          code,
+          ...jobFailures[code],
+          failedAt: row.failure_time?.toISOString() ?? row.completed_on?.toISOString() ?? null
+        }
+      : null
+  };
 }
 export async function getJobsSummary(actor: Actor) {
   await requireAdmin(actor);
@@ -206,17 +226,25 @@ export async function getJobs(
   const values = [queueNames, state, search];
   const result = await transaction(async (client) => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-    const total = Number(
-      (await client.query(`SELECT count(*) FROM "${schema}".job WHERE ${filter}`, values)).rows[0]
-        .count
-    );
+    const total =
+      options.paginate === false
+        ? 0
+        : Number(
+            (await client.query(`SELECT count(*) FROM "${schema}".job WHERE ${filter}`, values))
+              .rows[0].count
+          );
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const latest = await client.query(
       `SELECT ${jobColumns} FROM "${schema}".job WHERE ${filter}
        ORDER BY created_on DESC,id DESC ${options.paginate === false ? '' : 'LIMIT $4 OFFSET $5'}`,
       options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
     );
-    return { total, page, pageSize, jobs: latest.rows.map(serializeJob) };
+    return {
+      total: options.paginate === false ? latest.rows.length : total,
+      page,
+      pageSize,
+      jobs: latest.rows.map(serializeJob)
+    };
   });
   const lastSeen = (await pool.query('SELECT max(last_seen) AS last_seen FROM worker_heartbeat'))
     .rows[0].last_seen as Date | null;

@@ -340,6 +340,11 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
       email: 'Redaction+PPI@Example.org',
       ...preferences
     });
+    const secondRecipient = await alerts.saveAdminAlertRecipient(admin, {
+      email: 'uploads@example.org',
+      ...preferences,
+      content_reported: false
+    });
     await expect(
       alerts.saveAdminAlertRecipient(admin, { email: 'redaction+ppi@example.org', ...preferences })
     ).rejects.toMatchObject({ code: 'duplicate_alert_email' });
@@ -386,6 +391,16 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
       'protocol_uploaded'
     ]);
     expect(
+      (
+        await pool.query(
+          "SELECT admin_alert_type FROM email_outbox WHERE recipient='uploads@example.org'"
+        )
+      ).rows
+    ).toEqual([
+      { admin_alert_type: 'protocol_uploaded' },
+      { admin_alert_type: 'protocol_uploaded' }
+    ]);
+    expect(
       mail
         .filter((row) => row.admin_alert_type === 'protocol_uploaded')
         .every((row) => row.body.includes(`/admin/review/${submission.submissionId}`))
@@ -412,6 +427,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
       ).rows[0].count
     ).toBe(0);
     await alerts.removeAdminAlertRecipient(admin, recipient.id);
+    await alerts.removeAdminAlertRecipient(admin, secondRecipient.id);
     expect(
       (
         await pool.query(
@@ -436,6 +452,14 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
       `UPDATE "${bossSchema}".job SET state='failed',completed_on=clock_timestamp() WHERE id=$1`,
       [failed]
     );
+    await pool.query(
+      `INSERT INTO core_job(id,type,business_key,payload,status,error,finished_at)
+      VALUES($1,'file_check',$2,'{}','failed','canceling statement due to statement timeout',now())`,
+      [failed, `failure:${failed}`]
+    );
+    const details = await jobs.getJob(admin, failed);
+    expect(details.failure).toMatchObject({ code: 'timeout', message: 'jobs.failure.timeout' });
+    expect(JSON.stringify(details)).not.toContain('canceling statement');
     await pool.query(`UPDATE "${bossSchema}".job SET state='retry' WHERE id=$1`, [retry]);
     await jobs.collectAdminJobAlerts();
     const mails = (

@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import nodemailer from 'nodemailer';
 import { renderEmailHtml } from '../src/lib/server/email.js';
 import { recordSystemFailure } from '../src/lib/server/admin-alerts.js';
+import { classifyJobFailure } from '../src/lib/job-failures.js';
 import { pool, transaction } from '../src/lib/server/db.js';
 import { completeFileCheck, processPeriodicGrant } from '../src/lib/server/domain/index.js';
 import {
@@ -224,11 +225,11 @@ async function runQueue(name: (typeof queueNames)[number]) {
       const message = error instanceof Error ? error.message : 'Job failed';
       console.error(`Job ${name}/${job.id}: ${message}`);
       if (job.data.outboxId)
-        await pool.query("UPDATE core_job SET status='failed',error=$2 WHERE id=$1", [
-          job.data.outboxId,
-          message.slice(0, 500)
-        ]);
-      await boss.fail(name, attempt, { message: 'Task failed. Check worker logs and retry.' });
+        await pool.query(
+          "UPDATE core_job SET status='failed',error=$2,finished_at=now() WHERE id=$1",
+          [job.data.outboxId, message.slice(0, 500)]
+        );
+      await boss.fail(name, attempt, { code: classifyJobFailure(error) });
     }
   }
 }

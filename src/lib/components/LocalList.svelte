@@ -42,12 +42,15 @@
     }))
   );
   let filtered = $derived(
-    indexed
-      .filter(
-        ({ entry, text }) =>
-          (!needle || text.includes(needle)) && (!matches || matches(entry, values))
-      )
-      .map(({ entry }) => entry)
+    needle
+      ? indexed
+          .filter(
+            ({ entry, text }) => text.includes(needle) && (!matches || matches(entry, values))
+          )
+          .map(({ entry }) => entry)
+      : matches
+        ? entries.filter((entry) => matches(entry, values))
+        : entries
   );
   let displayPage = $derived(
     Math.min(requestedPage, Math.max(1, Math.ceil(filtered.length / pageSize)))

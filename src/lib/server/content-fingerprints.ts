@@ -6,6 +6,21 @@ export const SIMILARITY_THRESHOLD = 0.8;
 export const REPETITION_THRESHOLD = 0.5;
 export const MAX_CONTENT_CHARACTERS = 500_000;
 
+export function shingleSimilarity(left: readonly string[], right: readonly string[]) {
+  let i = 0,
+    j = 0,
+    shared = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      shared++;
+      i++;
+      j++;
+    } else if (left[i] < right[j]) i++;
+    else j++;
+  }
+  return shared / (left.length + right.length - shared) || 0;
+}
+
 export function fingerprintText(text: string) {
   const words =
     text
