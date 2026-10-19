@@ -1,68 +1,78 @@
 import { transaction } from './db.js';
-import { currentActor, DomainError, type Actor } from './domain/shared.js';
+import { currentActor, type Actor } from './domain/shared.js';
 
-export async function getAdminStatistics(actor: Actor, range = '30d') {
-  if (!['30d', '6m', '1y', 'max'].includes(range))
-    throw new DomainError(400, 'invalid_range', 'Choose a valid statistics period.');
+const ranges = ['30d', '6m', '1y', 'max'] as const;
+type Range = (typeof ranges)[number];
+type Counts = { logins: number; events: number; submissions: number; decisions: number };
+type Statistics = {
+  series: (Counts & { day: string })[];
+  totals: Counts;
+  range: Range;
+  granularity: 'day' | 'month' | 'year';
+  startDate: string;
+  endDate: string;
+  timezone: string;
+};
+
+export async function getAdminStatisticsPeriods(actor: Actor) {
   return transaction(async (client) => {
     await currentActor(client, actor, true);
-    const bounds = (
-      await client.query<{
-        start_date: string;
-        end_date: string;
-        granularity: 'day' | 'month' | 'year';
-      }>(
-        `WITH bounds AS (SELECT CASE $1
-        WHEN '30d' THEN (now() AT TIME ZONE 'Europe/Berlin')::date-29
-        WHEN '6m' THEN ((now() AT TIME ZONE 'Europe/Berlin')::date-interval '6 months'+interval '1 day')::date
-        WHEN '1y' THEN ((now() AT TIME ZONE 'Europe/Berlin')::date-interval '1 year'+interval '1 day')::date
-        ELSE coalesce((SELECT (min(created_at) AT TIME ZONE 'Europe/Berlin')::date FROM audit_event),(now() AT TIME ZONE 'Europe/Berlin')::date) END AS start_date,
-        (now() AT TIME ZONE 'Europe/Berlin')::date AS end_date)
-       SELECT to_char(start_date,'YYYY-MM-DD') AS start_date,to_char(end_date,'YYYY-MM-DD') AS end_date,
-         CASE WHEN $1='max' AND start_date<end_date-interval '20 years' THEN 'year'
-              WHEN $1='max' AND start_date<end_date-interval '1 year' THEN 'month' ELSE 'day' END AS granularity FROM bounds`,
-        [range]
-      )
-    ).rows[0];
-    const series = await client.query<{
-      day: string;
-      logins: number;
-      events: number;
-      submissions: number;
-      decisions: number;
-    }>(
-      `WITH periods AS (
-        SELECT generate_series(date_trunc($3,$1::timestamp),date_trunc($3,$2::timestamp),
-          CASE $3 WHEN 'year' THEN interval '1 year' WHEN 'month' THEN interval '1 month' ELSE interval '1 day' END)::date AS day
-       ), events AS (
-         SELECT date_trunc($3,created_at AT TIME ZONE 'Europe/Berlin')::date AS day,count(*)::integer AS events,
+    const { rows } = await client.query<Omit<Statistics, 'totals' | 'timezone'>>(
+      `WITH bounds AS (
+         SELECT range, CASE range
+           WHEN '30d' THEN today-29
+           WHEN '6m' THEN (today-interval '6 months'+interval '1 day')::date
+           WHEN '1y' THEN (today-interval '1 year'+interval '1 day')::date
+           ELSE coalesce((SELECT (min(created_at) AT TIME ZONE 'Europe/Berlin')::date FROM audit_event),today)
+         END AS start_date,today AS end_date
+         FROM unnest($1::text[]) AS range CROSS JOIN
+           (SELECT (now() AT TIME ZONE 'Europe/Berlin')::date AS today) AS clock
+       ), periods AS (
+         SELECT *,CASE WHEN range='max' AND start_date<end_date-interval '20 years' THEN 'year'
+           WHEN range='max' AND start_date<end_date-interval '1 year' THEN 'month' ELSE 'day' END AS granularity
+         FROM bounds
+       ), daily AS MATERIALIZED (
+         SELECT (created_at AT TIME ZONE 'Europe/Berlin')::date AS day,count(*)::integer AS events,
            count(*) FILTER(WHERE action='auth.login')::integer AS logins,
            count(*) FILTER(WHERE action='submission.created')::integer AS submissions,
            count(*) FILTER(WHERE action='submission.reviewed')::integer AS decisions
-         FROM audit_event WHERE created_at>=($1::timestamp AT TIME ZONE 'Europe/Berlin')
-           AND created_at<(($2::date+1)::timestamp AT TIME ZONE 'Europe/Berlin') GROUP BY 1
-       ) SELECT to_char(periods.day,'YYYY-MM-DD') AS day,coalesce(events.logins,0) AS logins,coalesce(events.events,0) AS events,
-         coalesce(events.submissions,0) AS submissions,coalesce(events.decisions,0) AS decisions
-         FROM periods LEFT JOIN events USING(day) ORDER BY periods.day`,
-      [bounds.start_date, bounds.end_date, bounds.granularity]
+         FROM audit_event WHERE created_at>=((SELECT min(start_date) FROM bounds)::timestamp AT TIME ZONE 'Europe/Berlin')
+           AND created_at<(((SELECT max(end_date) FROM bounds)+1)::timestamp AT TIME ZONE 'Europe/Berlin')
+         GROUP BY 1
+       ), counts AS (
+         SELECT p.range,date_trunc(p.granularity,d.day)::date AS day,
+           sum(d.logins)::integer AS logins,sum(d.events)::integer AS events,
+           sum(d.submissions)::integer AS submissions,sum(d.decisions)::integer AS decisions
+         FROM periods p JOIN daily d ON d.day BETWEEN p.start_date AND p.end_date GROUP BY 1,2
+       ) SELECT p.range,p.granularity,to_char(p.start_date,'YYYY-MM-DD') AS "startDate",
+         to_char(p.end_date,'YYYY-MM-DD') AS "endDate",
+         json_agg(json_build_object('day',to_char(t.day,'YYYY-MM-DD'),
+           'logins',coalesce(c.logins,0),'events',coalesce(c.events,0),
+           'submissions',coalesce(c.submissions,0),'decisions',coalesce(c.decisions,0)) ORDER BY t.day) AS series
+         FROM periods p CROSS JOIN LATERAL generate_series(date_trunc(p.granularity,p.start_date::timestamp),
+           date_trunc(p.granularity,p.end_date::timestamp),
+           CASE p.granularity WHEN 'year' THEN interval '1 year' WHEN 'month' THEN interval '1 month' ELSE interval '1 day' END) AS t(day)
+         LEFT JOIN counts c ON c.range=p.range AND c.day=t.day::date
+         GROUP BY p.range,p.granularity,p.start_date,p.end_date`,
+      [ranges]
     );
-    const totals = series.rows.reduce(
-      (sum, point) => ({
-        logins: sum.logins + point.logins,
-        events: sum.events + point.events,
-        submissions: sum.submissions + point.submissions,
-        decisions: sum.decisions + point.decisions
-      }),
-      { logins: 0, events: 0, submissions: 0, decisions: 0 }
+    return Object.fromEntries(
+      rows.map((row) => [
+        row.range,
+        {
+          ...row,
+          totals: row.series.reduce(
+            (sum, point) => ({
+              logins: sum.logins + point.logins,
+              events: sum.events + point.events,
+              submissions: sum.submissions + point.submissions,
+              decisions: sum.decisions + point.decisions
+            }),
+            { logins: 0, events: 0, submissions: 0, decisions: 0 }
+          ),
+          timezone: 'Europe/Berlin'
+        }
+      ])
     );
-    return {
-      series: series.rows,
-      totals,
-      range,
-      granularity: bounds.granularity,
-      startDate: bounds.start_date,
-      endDate: bounds.end_date,
-      timezone: 'Europe/Berlin'
-    };
   });
 }

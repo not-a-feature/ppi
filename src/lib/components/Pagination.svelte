@@ -10,6 +10,10 @@
     $props();
   let language = $derived(currentPage.data.preferences?.language ?? 'de');
   let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
+  let links = $derived([
+    { target: page - 1, rel: 'prev', label: 'Zurück' },
+    { target: page + 1, rel: 'next', label: 'Weiter' }
+  ] as const);
   function href(target: number) {
     const url = new URL(currentPage.url);
     for (const key of [...url.searchParams.keys()]) {
@@ -27,28 +31,19 @@
     {page} / {pages}</span
   >
   <div class="actions">
-    {#if page > 1}<a
-        class="button secondary"
-        href={href(page - 1)}
-        rel="prev"
-        onclick={(event) => {
-          if (onPageChange) {
-            event.preventDefault();
-            onPageChange(page - 1);
-          }
-        }}>{t(language, 'Zurück')}</a
-      >{/if}
-    {#if page < pages}<a
-        class="button secondary"
-        href={href(page + 1)}
-        rel="next"
-        onclick={(event) => {
-          if (onPageChange) {
-            event.preventDefault();
-            onPageChange(page + 1);
-          }
-        }}>{t(language, 'Weiter')}</a
-      >{/if}
+    {#each links as link}
+      {#if link.target >= 1 && link.target <= pages}<a
+          class="button secondary"
+          href={href(link.target)}
+          rel={link.rel}
+          onclick={(event) => {
+            if (onPageChange) {
+              event.preventDefault();
+              onPageChange(link.target);
+            }
+          }}>{t(language, link.label)}</a
+        >{/if}
+    {/each}
   </div>
 </nav>
 

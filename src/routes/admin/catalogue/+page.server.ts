@@ -49,8 +49,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     result.items.map((l) => l.id)
   );
   const lectureExaminers = Object.fromEntries(
-    result.items.map((l) => [l.id, examiners.filter((e) => e.lecture_id === l.id)])
+    result.items.map((lecture) => [lecture.id, [] as typeof examiners])
   );
+  for (const examiner of examiners) lectureExaminers[examiner.lecture_id].push(examiner);
   return {
     ...result,
     page:

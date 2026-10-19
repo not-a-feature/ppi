@@ -38,19 +38,12 @@ export const actions: Actions = {
       stored = await storeUpload(uploadFile(form), current.id);
       result = await submitProtocol(current, {
         file: stored,
-        lectureIds: form.getAll('lectureIds').map(String),
-        newLectureNames: form
-          .getAll('newLectureNames')
-          .map((value) => String(value).trim())
-          .filter(Boolean),
-        examinerId: field(form, 'examinerId') || undefined,
-        examinerName: field(form, 'examinerName') || undefined,
-        examDate: field(form, 'examDate') || undefined,
-        term: field(form, 'term'),
-        remarks: field(form, 'remarks'),
-        collaboratorZx: field(form, 'collaboratorZx')
-          .split(/[\s,;]+/)
-          .filter(Boolean),
+        ...values,
+        newLectureNames: values.newLectureNames.map((name) => name.trim()).filter(Boolean),
+        examinerId: values.examinerId || undefined,
+        examinerName: values.examinerName || undefined,
+        examDate: values.examDate || undefined,
+        collaboratorZx: values.collaboratorZx.split(/[\s,;]+/).filter(Boolean),
         attested: true,
         requestKey: field(form, 'requestKey')
       });

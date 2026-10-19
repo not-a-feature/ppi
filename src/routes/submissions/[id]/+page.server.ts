@@ -69,15 +69,12 @@ export const actions: Actions = {
       stored = await storeUpload(uploadFile(form), current.id);
       await reviseProtocol(current, params.id, {
         file: stored,
-        lectureIds: form.getAll('lectureIds').map(String),
-        newLectureNames: form
-          .getAll('newLectureNames')
-          .map((value) => String(value).trim())
-          .filter(Boolean),
-        examinerId: field(form, 'examinerId') || undefined,
-        examinerName: field(form, 'examinerName') || undefined,
-        term: field(form, 'term'),
-        remarks: field(form, 'remarks'),
+        lectureIds: values.lectureIds,
+        newLectureNames: values.newLectureNames.map((name) => name.trim()).filter(Boolean),
+        examinerId: values.examinerId || undefined,
+        examinerName: values.examinerName || undefined,
+        term: values.term,
+        remarks: values.remarks,
         collaboratorZx: [],
         attested: true,
         requestKey: field(form, 'requestKey')

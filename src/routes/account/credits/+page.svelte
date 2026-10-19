@@ -79,6 +79,7 @@
     <section class="card">
       <h2>{t(language, 'Tokens anfragen')}</h2>
       <form method="POST" action={namedAction(page.url, 'request')}>
+        <input type="hidden" name="requestKey" value={data.requestKey} />
         <label for="explanation"
           >{t(language, 'Begründung')}<textarea
             name="explanation"

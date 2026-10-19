@@ -126,12 +126,19 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
       status: 403
     });
     await expect(jobs.runGrantNow(forged)).rejects.toMatchObject({ status: 403 });
+    await expect(jobs.getGrantSchedule(forged)).rejects.toMatchObject({ status: 403 });
     await expect(jobs.cancelJob(forged, randomUUID())).rejects.toMatchObject({ status: 403 });
     const response = await jobs.getJobs(admin);
     expect(response.jobs).toHaveLength(1);
     expect(JSON.stringify(response)).not.toContain(secret);
     expect(JSON.stringify(response)).not.toContain(student.email);
     expect(response.jobs[0]).not.toHaveProperty('data');
+    const schedule = { enabled: false, cron: '0 0 1 1,7 *' };
+    expect(await jobs.getGrantSchedule(admin)).toEqual(schedule);
+    await jobs.updateGrantSchedule(admin, { ...schedule, enabled: true });
+    expect(await jobs.getGrantSchedule(admin)).toEqual({ ...schedule, enabled: true });
+    await jobs.updateGrantSchedule(admin, schedule);
+    expect(await jobs.getGrantSchedule(admin)).toEqual(schedule);
     await jobs.controlQueue(admin, 'notification', true);
     expect(
       (await pool.query("SELECT paused FROM queue_control WHERE name='notification'")).rows[0]
@@ -180,6 +187,8 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
         id,
         state
       ]);
+      const details = await jobs.getJob(admin, id);
+      if (state === 'failed') expect(details.failure?.failedAt).toBe(details.completedOn);
       await jobs.retryJob(admin, id);
       expect((await jobs.getJob(admin, id)).state).toBe(
         state === 'cancelled' ? 'created' : 'retry'

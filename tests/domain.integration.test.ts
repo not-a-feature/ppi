@@ -135,6 +135,39 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     });
     expect(await domain.getActor(unverified.id)).toBeNull();
   });
+  it('deduplicates concurrent token requests, rejects changed replays, and stores SQL as text', async () => {
+    const student = await user(),
+      other = await user(),
+      requestKey = randomUUID(),
+      explanation = "Need tokens'); DROP TABLE token_request; --";
+    const requests = await Promise.all(
+      Array.from({ length: 4 }, () => domain.requestTokens(student, explanation, requestKey))
+    );
+    expect(requests.every((request) => request.id === requests[0].id)).toBe(true);
+    expect(
+      (await db.pool.query('SELECT explanation FROM token_request WHERE user_id=$1', [student.id]))
+        .rows
+    ).toEqual([{ explanation }]);
+    expect(
+      (
+        await db.pool.query(
+          "SELECT id FROM audit_event WHERE actor_id=$1 AND action='tokens.requested'",
+          [student.id]
+        )
+      ).rows
+    ).toHaveLength(1);
+    await expect(
+      domain.requestTokens(student, 'Changed explanation', requestKey)
+    ).rejects.toMatchObject({
+      code: 'request_key_reused'
+    });
+    expect((await domain.requestTokens(other, explanation, requestKey)).id).not.toBe(
+      requests[0].id
+    );
+    expect((await domain.requestTokens(student, explanation, randomUUID())).id).not.toBe(
+      requests[0].id
+    );
+  });
   it('loads the complete permitted catalogue for local filtering without exposing proposals', async () => {
     const prefix = `Local catalogue ${randomUUID()}`;
     await db.pool.query(

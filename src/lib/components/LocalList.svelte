@@ -30,27 +30,23 @@
   let requestedPage = $state(untrack(() => initialPage));
   let needle = $derived(search.trim().normalize('NFKC').toLocaleLowerCase('de-DE'));
   let indexed = $derived(
-    entries.map((entry) => ({
-      entry,
-      text: Object.values(entry)
+    entries.map((entry) =>
+      Object.values(entry)
         .map((value) =>
           value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
         )
         .join(' ')
         .normalize('NFKC')
         .toLocaleLowerCase('de-DE')
-    }))
+    )
   );
   let filtered = $derived(
-    needle
-      ? indexed
-          .filter(
-            ({ entry, text }) => text.includes(needle) && (!matches || matches(entry, values))
-          )
-          .map(({ entry }) => entry)
-      : matches
-        ? entries.filter((entry) => matches(entry, values))
-        : entries
+    needle || matches
+      ? entries.filter(
+          (entry, index) =>
+            (!needle || indexed[index].includes(needle)) && (!matches || matches(entry, values))
+        )
+      : entries
   );
   let displayPage = $derived(
     Math.min(requestedPage, Math.max(1, Math.ceil(filtered.length / pageSize)))

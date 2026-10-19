@@ -270,18 +270,20 @@ export async function purchaseLectureAccess(
   });
 }
 
-export async function requestTokens(actor: Actor, explanation: string) {
+export async function requestTokens(actor: Actor, explanation: string, requestKey: string) {
   explanation = bounded(explanation, 2000);
   return transaction(async (client) => {
     await currentActor(client, actor);
-    const request = (
-      await client.query(
-        'INSERT INTO token_request(user_id,explanation) VALUES($1,$2) RETURNING id',
-        [actor.id, explanation]
-      )
-    ).rows[0];
-    await audit(client, actor.id, 'tokens.requested', request.id);
-    return request;
+    return receipt(client, actor, 'token_request', requestKey, { explanation }, async () => {
+      const request = (
+        await client.query(
+          'INSERT INTO token_request(user_id,explanation) VALUES($1,$2) RETURNING id',
+          [actor.id, explanation]
+        )
+      ).rows[0];
+      await audit(client, actor.id, 'tokens.requested', request.id);
+      return request;
+    });
   });
 }
 

@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { untrack, type Snippet } from 'svelte';
-  import { afterNavigate } from '$app/navigation';
+  import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import { t } from '$lib/i18n';
 
@@ -9,18 +8,12 @@
     children,
     onSearch
   }: { query: string; children?: Snippet; onSearch: (form: FormData) => void } = $props();
-  let draft = $state(untrack(() => query));
   let form: HTMLFormElement;
   let language = $derived(page.data.preferences?.language ?? 'de');
 
   function searchNow() {
     onSearch(new FormData(form));
   }
-
-  afterNavigate(({ type, to }) => {
-    if (!to || (type !== 'popstate' && type !== 'link')) return;
-    draft = to.url.searchParams.get('q') ?? '';
-  });
 </script>
 
 <form
@@ -38,7 +31,7 @@
 >
   <label for="q">
     {t(language, 'Suchen')}
-    <input id="q" name="q" type="search" maxlength="200" bind:value={draft} oninput={searchNow} />
+    <input id="q" name="q" type="search" maxlength="200" value={query} oninput={searchNow} />
   </label>
   {@render children?.()}
   <noscript><button class="secondary">{t(language, 'Suchen')}</button></noscript>

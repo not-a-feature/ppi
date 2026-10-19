@@ -183,7 +183,7 @@ export async function getJob(actor: Actor, id: string) {
       ? {
           code,
           ...jobFailures[code],
-          failedAt: row.failure_time?.toISOString() ?? row.completed_on?.toISOString() ?? null
+          failedAt: row.failure_time?.toISOString() ?? row.completedOn?.toISOString() ?? null
         }
       : null
   };
@@ -209,7 +209,7 @@ export async function getJobs(
   options: { page?: number; state?: string; search?: string; paginate?: boolean } = {}
 ) {
   await requireAdmin(actor);
-  const boss = await getBoss();
+  await getBoss();
   const pageSize = 50;
   const requestedPage = options.page ?? 1;
   if (!Number.isSafeInteger(requestedPage) || requestedPage < 1)
@@ -218,8 +218,6 @@ export async function getJobs(
   if (state && !['created', 'retry', 'active', 'completed', 'cancelled', 'failed'].includes(state))
     throw new DomainError(400, 'invalid_state', 'Ungültiger Jobstatus.');
   const search = (options.search ?? '').trim().slice(0, 200);
-  const queues = (await pool.query('SELECT name,paused FROM queue_control ORDER BY name'))
-    .rows as Array<{ name: string; paused: boolean }>;
   const schema = queueSchema();
   const filter = `name=ANY($1::text[]) AND ($2='' OR state::text=$2)
     AND ($3='' OR strpos(id::text,$3)>0 OR strpos(name,$3)>0)`;
@@ -246,21 +244,24 @@ export async function getJobs(
       jobs: latest.rows.map(serializeJob)
     };
   });
-  const lastSeen = (await pool.query('SELECT max(last_seen) AS last_seen FROM worker_heartbeat'))
-    .rows[0].last_seen as Date | null;
-  const schedule = await boss.getSchedule('periodic_grant');
+  const {
+    rows: [controls]
+  } = await pool.query<{
+    queues: Array<{ name: string; paused: boolean }>;
+    last_seen: Date | null;
+  }>(`SELECT coalesce((SELECT json_agg(q ORDER BY q.name) FROM
+      (SELECT name,paused FROM queue_control) q),'[]'::json) queues,
+      max(last_seen) last_seen FROM worker_heartbeat`);
   return {
-    queues,
+    queues: controls.queues,
     ...result,
-    worker: { lastSeen: lastSeen?.toISOString() ?? null },
-    schedule: {
-      enabled: !!schedule,
-      cron: schedule?.cron ?? '0 0 1 1,7 *',
-      nextRun: schedule
-        ? boss.previewSchedule(schedule.cron, { tz: 'Europe/Berlin', count: 1 })[0]?.toISOString()
-        : undefined
-    }
+    worker: { lastSeen: controls.last_seen?.toISOString() ?? null }
   };
+}
+export async function getGrantSchedule(actor: Actor) {
+  await requireAdmin(actor);
+  const schedule = await (await getBoss()).getSchedule('periodic_grant');
+  return { enabled: !!schedule, cron: schedule?.cron ?? '0 0 1 1,7 *' };
 }
 async function audit(actor: Actor, action: string, id: string, detail: object = {}) {
   await pool.query(
@@ -321,11 +322,9 @@ export async function retryJob(actor: Actor, id: string) {
 }
 export async function cancelJob(actor: Actor, id: string) {
   await requireAdmin(actor);
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
-    throw new DomainError(400, 'invalid_id', 'Ungültige Job-ID.');
+  requireJobId(id);
   const boss = await getBoss();
-  const schema = process.env.PGBOSS_SCHEMA ?? 'pgboss';
-  if (!/^[a-z_][a-z0-9_]*$/.test(schema)) throw new Error('Invalid queue schema.');
+  const schema = queueSchema();
   await transaction(async (client) => {
     const job = (
       await client.query(

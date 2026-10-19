@@ -203,7 +203,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
 
     it('restricts statistics to current admins and counts only the requested thirty-day audit window', async () => {
       await expect(
-        statistics.getAdminStatistics({ ...student, isAdmin: true })
+        statistics.getAdminStatisticsPeriods({ ...student, isAdmin: true })
       ).rejects.toMatchObject({ status: 403 });
       await pool.query(
         "INSERT INTO audit_event(actor_id,action,entity_id) VALUES($1,'auth.login',$2)",
@@ -213,7 +213,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         "INSERT INTO audit_event(actor_id,action,entity_id,created_at) VALUES($1,'auth.login',$2,now()-interval '40 days')",
         [student.id, randomUUID()]
       );
-      const result = await statistics.getAdminStatistics(admin);
+      const result = (await statistics.getAdminStatisticsPeriods(admin))['30d'];
       expect(result.series).toHaveLength(30);
       expect(result.totals.logins).toBe(1);
       expect(result.totals.submissions).toBe(1);
@@ -222,16 +222,13 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(result.timezone).toBe('Europe/Berlin');
     });
 
-    it('validates period choices and aggregates longer recorded history without a large daily payload', async () => {
-      await expect(statistics.getAdminStatistics(admin, 'invalid')).rejects.toMatchObject({
-        status: 400,
-        code: 'invalid_range'
-      });
-      const months = await statistics.getAdminStatistics(admin, '6m');
+    it('aggregates longer recorded history without a large daily payload', async () => {
+      const periods = await statistics.getAdminStatisticsPeriods(admin);
+      const months = periods['6m'];
       expect(months.series.length).toBeGreaterThan(150);
       expect(months.series.length).toBeLessThanOrEqual(185);
       expect(months.totals.logins).toBe(2);
-      const year = await statistics.getAdminStatistics(admin, '1y');
+      const year = periods['1y'];
       expect(year.series.length).toBeGreaterThanOrEqual(365);
       expect(year.series.length).toBeLessThanOrEqual(366);
       expect(year.granularity).toBe('day');
@@ -239,7 +236,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         "INSERT INTO audit_event(actor_id,action,entity_id,created_at) VALUES($1,'auth.login',$2,now()-interval '2 years')",
         [student.id, randomUUID()]
       );
-      const all = await statistics.getAdminStatistics(admin, 'max');
+      const all = (await statistics.getAdminStatisticsPeriods(admin)).max;
       expect(all.granularity).toBe('month');
       expect(all.series.length).toBeLessThanOrEqual(26);
       expect(all.totals.logins).toBe(3);
@@ -247,10 +244,30 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         "INSERT INTO audit_event(actor_id,action,entity_id,created_at) VALUES($1,'auth.login',$2,now()-interval '25 years')",
         [student.id, randomUUID()]
       );
-      const long = await statistics.getAdminStatistics(admin, 'max');
+      const long = (await statistics.getAdminStatisticsPeriods(admin)).max;
       expect(long.granularity).toBe('year');
       expect(long.series.length).toBeLessThanOrEqual(27);
       expect(long.totals.logins).toBe(4);
+    });
+
+    it('keeps Berlin midnight boundaries when aggregating all periods together', async () => {
+      await pool.query('DELETE FROM audit_event');
+      await pool.query(
+        `WITH today AS (SELECT (now() AT TIME ZONE 'Europe/Berlin')::date AS day)
+         INSERT INTO audit_event(actor_id,action,entity_id,created_at)
+         SELECT $1,'auth.login',$2,boundary FROM today CROSS JOIN LATERAL (
+           VALUES (((day-29)::timestamp AT TIME ZONE 'Europe/Berlin')-interval '1 microsecond'),
+             ((day-29)::timestamp AT TIME ZONE 'Europe/Berlin'),
+             (((day+1)::timestamp AT TIME ZONE 'Europe/Berlin')-interval '1 microsecond'),
+             ((day+1)::timestamp AT TIME ZONE 'Europe/Berlin')
+         ) AS events(boundary)`,
+        [student.id, randomUUID()]
+      );
+      const periods = await statistics.getAdminStatisticsPeriods(admin);
+      expect(periods['30d'].totals.logins).toBe(2);
+      expect(periods['30d'].series[0].logins).toBe(1);
+      expect(periods['30d'].series.at(-1)?.logins).toBe(1);
+      expect(periods['6m'].totals.logins).toBe(3);
     });
   }
 );

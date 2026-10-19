@@ -32,7 +32,7 @@
     </p>
     <form method="POST" action={namedAction(page.url, 'schedule')}>
       <label
-        ><input type="checkbox" name="enabled" checked={data.jobs.schedule.enabled} />{t(
+        ><input type="checkbox" name="enabled" checked={data.schedule.enabled} />{t(
           language,
           'Zeitplan aktivieren'
         )}</label
@@ -40,7 +40,7 @@
         >{t(language, 'Cron-Zeitplan')}<input
           name="cron"
           required
-          value={data.jobs.schedule.cron}
+          value={data.schedule.cron}
         /><small>{t(language, 'Beispiel: 0 0 1 1,7 * (1. Januar und 1. Juli).')}</small></label
       ><button>{t(language, 'Zeitplan speichern')}</button>
     </form>
