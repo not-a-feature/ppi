@@ -1,0 +1,12 @@
+node_modules/
+.svelte-kit/
+build/
+.env
+.env.*
+!.env.example
+.data/
+coverage/
+test-results/
+playwright-report/
+static/pdfjs/
+*.log

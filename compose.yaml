@@ -1,0 +1,45 @@
+name: ppi2
+services:
+  db:
+    image: postgres:17-alpine
+    shm_size: "512m"
+    environment:
+      POSTGRES_USER: ppi
+      POSTGRES_PASSWORD: ppi_local_only
+      POSTGRES_DB: ppi
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ppi -d ppi"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+  mail:
+    image: axllent/mailpit:v1.29
+    ports:
+      - "127.0.0.1:10259:1025"
+      - "127.0.0.1:8029:8025"
+  worker:
+    profiles: ["worker"]
+    restart: unless-stopped
+    build: .
+    command: ["node", "--import", "tsx", "worker/index.ts"]
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 128
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://ppi:ppi_local_only@db:5432/ppi
+      SMTP_HOST: mail
+      SMTP_PORT: 1025
+      UPLOAD_DIR: /data/files
+      NODE_ENV: development
+    volumes:
+      - ./.data/files:/data/files
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  postgres-data:

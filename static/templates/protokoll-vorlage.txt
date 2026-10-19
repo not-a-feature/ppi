@@ -1,0 +1,28 @@
+Gedächtnisprotokoll
+==================
+
+Vorlesung: [Name der Vorlesung]
+Prüfende Person: [Name]
+Semester: [z. B. Winter 2026/27]
+Prüfungsdatum: [TT.MM.JJJJ]
+Prüfungsart: [Mündlich / schriftlich; Haupt- / Nachprüfung]
+Dauer: [Minuten]
+Hilfsmittel: [Erlaubte Hilfsmittel]
+
+Frage / Aufgabe 1
+----------------
+[Frage oder Aufgabenstellung aus dem Gedächtnis beschreiben.]
+
+Antwort / Lösungsweg:
+[Eigene Antwort oder den Lösungsweg ergänzen. Unsichere Angaben kennzeichnen.]
+
+Frage / Aufgabe 2
+----------------
+[Weitere Frage oder Aufgabe beschreiben.]
+
+Antwort / Lösungsweg:
+[Antwort oder Lösungsweg ergänzen.]
+
+Anmerkungen
+-----------
+[Optional: Ablauf, Schwerpunkte oder Hinweise zur Vorbereitung.]
