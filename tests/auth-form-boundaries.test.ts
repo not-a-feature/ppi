@@ -6,11 +6,13 @@ const doubles = vi.hoisted(() => ({
   signUpEmail: vi.fn(),
   getSession: vi.fn(async (_input: { headers: Headers }) => null),
   allowAuthForm: vi.fn(),
+  recordSystemFailure: vi.fn(async () => {}),
   submissions: new Map<string, number>()
 }));
 vi.mock('$app/environment', () => ({ building: false }));
 vi.mock('$lib/server/auth', () => ({ auth: { api: doubles } }));
 vi.mock('$lib/server/db', () => ({ pool: {} }));
+vi.mock('$lib/server/admin-alerts', () => ({ recordSystemFailure: doubles.recordSystemFailure }));
 vi.mock('$lib/server/auth/session', () => ({ currentAccount: vi.fn() }));
 vi.mock('$lib/server/auth/rate-limit', () => ({ allowAuthForm: doubles.allowAuthForm }));
 vi.mock('$lib/server/auth/client-address', () => import('../src/lib/server/auth/client-address'));
@@ -29,7 +31,7 @@ vi.mock('../src/routes/_helpers', () => ({
   field: (form: FormData, name: string) => String(form.get(name) ?? '').trim()
 }));
 
-import { handle } from '../src/hooks.server';
+import { handle, handleError } from '../src/hooks.server';
 import { actions } from '../src/routes/(auth)/[flow]/+page.server';
 
 function event(path: string, flow = 'login', routeId = '/(auth)/[flow]') {
@@ -61,6 +63,21 @@ beforeEach(() => {
 });
 
 describe('authentication request boundaries', () => {
+  it('keeps the original error response when an administrator alert cannot be queued', async () => {
+    doubles.recordSystemFailure.mockRejectedValueOnce(new Error('Notification unavailable'));
+    const logging = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failure = new Error('Unexpected failure');
+    expect(
+      await handleError({
+        error: failure,
+        event: event('/login'),
+        status: 500,
+        message: 'Internal Error'
+      } as never)
+    ).toEqual({ message: 'Internal Error' });
+    expect(doubles.recordSystemFailure).toHaveBeenCalledWith('web', failure, 'POST /(auth)/[flow]');
+    logging.mockRestore();
+  });
   it('shares the login throttle across encoded credential-form URLs before checking passwords', async () => {
     for (let attempt = 0; attempt < 12; attempt++) {
       const requestEvent = event(attempt % 2 ? '/%6cogin' : '/login');

@@ -12,6 +12,7 @@ vi.mock('$lib/server/auth', () => ({
   }
 }));
 vi.mock('$lib/server/db', () => ({ pool: {} }));
+vi.mock('$lib/server/admin-alerts', () => ({ recordSystemFailure: vi.fn(async () => {}) }));
 vi.mock('$lib/server/auth/session', () => ({
   currentAccount: async (id: string) => ({
     actor: { id, email: 'zxabc01@student.uni-tuebingen.de', isAdmin: false },
