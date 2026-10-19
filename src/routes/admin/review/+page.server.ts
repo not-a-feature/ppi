@@ -7,7 +7,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const current = admin(locals);
   const q = (url.searchParams.get('q') ?? '').trim();
   const requestedPage = Number(url.searchParams.get('page') ?? 1);
-  const scope = url.searchParams.get('scope') === 'all' ? 'all' : 'pending';
+  const scope = ['all', 'ready'].includes(url.searchParams.get('scope') ?? '')
+    ? url.searchParams.get('scope')!
+    : 'pending';
   const lectureId = url.searchParams.get('lecture');
   const lecture = lectureId
     ? (await loadResult(() => getLecturesByIds(current, [lectureId])))[0]

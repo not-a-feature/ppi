@@ -10,6 +10,7 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
+  import './selector.css';
   import { t, type Language, type MessageKey } from '$lib/i18n';
   let {
     lectures,
@@ -102,7 +103,7 @@
   }
 </script>
 
-<div class="course-selector">
+<div class="selection-control">
   {#if value.lectureId}<input type="hidden" name="lectureIds" value={value.lectureId} />{/if}
   {#if value.newLectureName}<input
       type="hidden"
@@ -110,13 +111,13 @@
       value={value.newLectureName}
     />{/if}
   {#if selectedName}
-    <div class="selected-course">
-      <span class="selection-check" aria-hidden="true">✓</span><span class="selected-name"
+    <div class="selected-option">
+      <span class="selection-check" aria-hidden="true">✓</span><span class="selection-name"
         >{selectedName}</span
       >{#if pending}<span class="pending-label">{tr('Ausstehend')}</span>{/if}<button
         bind:this={changeButton}
         type="button"
-        class="change-course"
+        class="change-selection"
         onclick={edit}
         aria-label={tr('Vorlesung ändern: ') + selectedName}>{tr('Ändern')}</button
       >
@@ -145,7 +146,7 @@
     {#if open}
       <div
         id={id + '-options'}
-        class="course-options"
+        class="selection-options"
         role="listbox"
         aria-label={tr('Vorlesungen')}
       >
@@ -182,109 +183,3 @@
     {/if}
   {/if}
 </div>
-
-<style>
-  .course-selector {
-    min-width: 0;
-    position: relative;
-  }
-  .course-selector input {
-    margin: 0;
-  }
-  .selected-course {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    padding: 0.75rem 0.85rem;
-    min-height: 49px;
-  }
-  .selection-check {
-    color: var(--accent);
-    font-weight: 700;
-  }
-  .selected-name {
-    flex: 1;
-    min-width: 0;
-    overflow-wrap: anywhere;
-    font-size: 0.94rem;
-  }
-  .pending-label {
-    font-size: 0.71rem;
-    line-height: 1.3;
-    color: var(--muted);
-    background: var(--subtle);
-    padding: 0.2rem 0.4rem;
-    white-space: nowrap;
-  }
-  .change-course {
-    background: transparent;
-    border: 0;
-    color: var(--accent);
-    font-size: 0.79rem;
-    padding: 0.2rem;
-    font-weight: 500;
-  }
-  .change-course:hover {
-    background: transparent;
-    text-decoration: underline;
-  }
-  .course-options {
-    border: 1px solid var(--line);
-    border-top: 0;
-    background: var(--surface);
-    max-height: 240px;
-    overflow-y: auto;
-  }
-  .course-options > button {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.7rem;
-    text-align: left;
-    background: var(--surface);
-    color: var(--ink);
-    border: 0;
-    border-radius: 0;
-    padding: 0.8rem 0.85rem;
-    font-weight: 400;
-    font-size: 0.88rem;
-    line-height: 1.45;
-  }
-  .course-options > button + button {
-    border-top: 1px solid var(--line);
-  }
-  .course-options > button:hover,
-  .course-options > button.highlighted {
-    background: var(--subtle);
-  }
-  .course-options > button.create-course {
-    color: var(--accent);
-  }
-  .create-course strong {
-    font-weight: 600;
-  }
-  .no-options {
-    font-size: 0.85rem;
-    color: var(--muted);
-    padding: 0.8rem;
-    margin: 0;
-  }
-  @media (max-width: 500px) {
-    .selected-course {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .selected-name {
-      flex-basis: calc(100% - 2rem);
-    }
-    .change-course {
-      margin-left: auto;
-    }
-    .course-options > button {
-      font-size: 0.84rem;
-    }
-  }
-</style>

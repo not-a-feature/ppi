@@ -369,10 +369,8 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       second.revisionId
     );
     await expect(
-      db.pool.query("UPDATE submission_revision SET remarks='changed' WHERE id=$1", [
-        first.revisionId
-      ])
-    ).rejects.toThrow('History records are immutable');
+      db.pool.query('UPDATE submission_revision SET attested=false WHERE id=$1', [first.revisionId])
+    ).rejects.toThrow('Revision identity and file fields are immutable');
   });
   it('assigns unique normalized download names and preserves them across retries and improvements', async () => {
     const student = await user();
@@ -819,7 +817,7 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
   });
   it('requires canonical semesters in the Berlin-year range without changing existing terms', async () => {
     const fixed = new Date('2026-12-31T23:30:00Z');
-    expect(termOptions(fixed)[0].value).toBe('WS2028/29');
+    expect(termOptions(fixed)[0].value).toBe('WS2023/24');
     expect(isValidTerm('SS2017', fixed)).toBe(true);
     expect(isValidTerm('SS2016', fixed)).toBe(false);
     expect(isValidTerm('WS2026/28', fixed)).toBe(false);
@@ -834,7 +832,7 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     const first = await domain.submitProtocol(student, input(lecture.id));
     await expect(
       domain.reviseProtocol(student, first.submissionId, { ...input(lecture.id), term: 'SS9999' })
-    ).rejects.toMatchObject({ code: 'invalid_term' });
+    ).resolves.toMatchObject({ submissionId: first.submissionId });
     expect((await domain.getSubmission(student, first.submissionId)).revisions[0].term).toBe(
       input(lecture.id).term
     );

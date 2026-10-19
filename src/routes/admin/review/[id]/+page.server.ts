@@ -7,6 +7,7 @@ import {
   getNextReview,
   getLecturesByIds,
   listExaminers,
+  listUploadLectures,
   decideSubmission,
   withdrawPublication,
   reprocessFile,
@@ -15,12 +16,18 @@ import {
 import { admin, field, actionResult, loadResult } from '../../../_helpers';
 import { requestProtocolFileDeletion } from '$lib/server/deletion';
 import { getContentChecks, requestContentCheck } from '$lib/server/content-checks';
+import { updateProtocolMetadata } from '$lib/server/domain/metadata';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, params, url }) => {
   const current = admin(locals);
   const lectureId = url.searchParams.get('lecture') ?? undefined;
-  const [submission, policy, examiners] = await loadResult(() =>
-    Promise.all([getSubmission(current, params.id), getSettings(current), listExaminers(current)])
+  const [submission, policy, examiners, availableLectures] = await loadResult(() =>
+    Promise.all([
+      getSubmission(current, params.id),
+      getSettings(current),
+      listExaminers(current),
+      listUploadLectures(current)
+    ])
   );
   const lectures = await loadResult(() =>
     getLecturesByIds(
@@ -50,11 +57,35 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
     reviewContext: lectureId ? `?lecture=${lectureId}` : '',
     contentChecks,
     lectures,
+    metadataLectures: [
+      ...new Map(
+        [...availableLectures, ...lectures].map((lecture) => [lecture.id, lecture])
+      ).values()
+    ],
     examiners,
     requestKey: crypto.randomUUID()
   };
 };
 export const actions: Actions = {
+  metadata: async ({ locals, params, request }) => {
+    const form = await request.formData();
+    return actionResult(
+      () =>
+        updateProtocolMetadata(admin(locals), params.id, {
+          revisionId: field(form, 'revisionId'),
+          expectedVersion: Number(field(form, 'version')),
+          lectureIds: form.getAll('lectureIds').map(String),
+          examinerNames: field(form, 'examinerNames')
+            .split(/\r?\n/)
+            .map((name) => name.trim())
+            .filter(Boolean),
+          term: field(form, 'term'),
+          examDate: field(form, 'examDate'),
+          remarks: field(form, 'remarks')
+        }),
+      t(locals.preferences.language, 'Metadaten gespeichert.')
+    );
+  },
   contentCheck: async ({ locals, params }) =>
     actionResult(
       () => requestContentCheck(admin(locals), params.id),

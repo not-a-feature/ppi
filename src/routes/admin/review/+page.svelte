@@ -21,13 +21,17 @@
     (filters.scope === 'all' ||
       (!row.files_deleted_at &&
         !row.file_deleted_at &&
-        ['processing', 'awaiting_review', 'changes_requested'].includes(row.review_state)))}
+        (filters.scope === 'ready'
+          ? row.review_state === 'awaiting_review' && row.safety_status === 'clean'
+          : ['processing', 'awaiting_review', 'changes_requested'].includes(row.review_state))))}
 >
   {#snippet filters(filters)}
     <label
       >{t(language, 'Anzeigen')}<select name="scope"
         ><option value="pending" selected={filters.scope === 'pending'}
           >{t(language, 'Ausstehend')}</option
+        ><option value="ready" selected={filters.scope === 'ready'}
+          >{t(language, 'Prüfbereit')}</option
         ><option value="all" selected={filters.scope === 'all'}>{t(language, 'Alle')}</option
         ></select
       ></label
@@ -35,7 +39,7 @@
   {/snippet}
   {#snippet children(rows, start)}
     <section class="card">
-      {#each rows as entry, index}<div class="list-row">
+      {#each rows as entry}<div class="list-row">
           <div class="review-entry-label">
             <h3>
               <a
@@ -44,7 +48,8 @@
                   ? `/admin/review/${entry.id}?lecture=${data.lecture.id}`
                   : `/admin/review/${entry.id}`}
                 title={entry.lecture_names.join(', ')}
-                >{start + index + 1}. {entry.lecture_names.join(', ')}</a
+                >{#if entry.upload_number}{entry.upload_number}.
+                {/if}{entry.lecture_names.join(', ')}</a
               >
             </h3>
             <p class="hint">

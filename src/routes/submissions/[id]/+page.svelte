@@ -120,6 +120,7 @@
       examiners={data.examiners}
       requestKey={data.requestKey}
       values={form?.values ?? data.initialValues}
+      inheritedTerm={data.initialValues.term}
       improvement
     />
   </details>{/if}

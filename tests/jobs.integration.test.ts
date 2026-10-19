@@ -65,6 +65,35 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
     await root?.end();
   });
 
+  it('separates recent failures, older failures and live work in the job summary', async () => {
+    await expect(jobs.getJobsSummary(student)).rejects.toMatchObject({ status: 403 });
+    const before = await jobs.getJobsSummary(admin);
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i++)
+      ids.push((await boss.send('notification', { overviewFixture: randomUUID() }))!);
+    await pool.query(
+      `UPDATE "${bossSchema}".job SET state='failed',completed_on=now()-interval '1 hour' WHERE id=$1`,
+      [ids[0]]
+    );
+    await pool.query(
+      `UPDATE "${bossSchema}".job SET state='failed',completed_on=now()-interval '2 days' WHERE id=$1`,
+      [ids[1]]
+    );
+    await pool.query(`UPDATE "${bossSchema}".job SET state='active',started_on=now() WHERE id=$1`, [
+      ids[3]
+    ]);
+    await pool.query(`UPDATE "${bossSchema}".job SET state='retry' WHERE id=$1`, [ids[4]]);
+    const after = await jobs.getJobsSummary(admin);
+    expect(after.total).toBe(before.total + 2);
+    expect(after.failedRecent).toBe(before.failedRecent + 1);
+    expect(after.failedOlder).toBe(before.failedOlder + 1);
+    expect(after.queued).toBe(before.queued + 1);
+    expect(after.running).toBe(before.running + 1);
+    expect(after.retrying).toBe(before.retrying + 1);
+    expect(after.nextCleanup).not.toBeNull();
+    await pool.query(`DELETE FROM "${bossSchema}".job WHERE id=ANY($1::uuid[])`, [ids]);
+  });
+
   it('rolls back the email record when its durable outbox insert fails', async () => {
     await pool.query(
       `CREATE FUNCTION reject_test_job() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced outbox failure'; END $$`

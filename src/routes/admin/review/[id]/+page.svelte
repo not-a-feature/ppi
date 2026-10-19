@@ -10,6 +10,8 @@
   import AutomaticChecks from '$lib/components/AutomaticChecks.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data, form } = $props();
+  let metadataQuery = $state('');
+  let metadataLectureIds = $state<string[]>(untrack(() => data.revision.lecture_ids));
   let lectureTitle = $derived(
     data.lectures
       .filter((lecture) => data.revision.lecture_ids.includes(lecture.id))
@@ -112,6 +114,8 @@
       previousSubmissionId = data.submission.id;
       previousValues = form?.values;
       untrack(() => {
+        metadataQuery = '';
+        metadataLectureIds = data.revision.lecture_ids;
         outcome = initialOutcome();
         previousOutcome = outcome;
         reward =
@@ -158,7 +162,7 @@
       {t(language, 'Version')}
       {data.revision.revision_number}
       {t(language, ', Einreichung')}
-      {data.submission.id}
+      {data.submission.upload_number ?? data.submission.id}
     </p>
   </div>
   <Status value={data.submission.review_state} />
@@ -246,6 +250,77 @@
       {#if data.revision.remarks}<h3>{t(language, 'Anmerkungen')}</h3>
         <p>{data.revision.remarks}</p>{/if}
     </section>
+    {#if !data.submission.files_deleted_at}<details class="card">
+        <summary>{t(language, 'Metadaten bearbeiten')}</summary>
+        <form method="POST" action={namedAction(page.url, 'metadata')}>
+          <input type="hidden" name="version" value={data.submission.version} />
+          <input type="hidden" name="revisionId" value={data.revision.id} />
+          {#each metadataLectureIds as lectureId}<input
+              type="hidden"
+              name="lectureIds"
+              value={lectureId}
+            />{/each}
+          <fieldset>
+            <legend>{t(language, 'Veranstaltungen')}</legend>
+            <input
+              type="search"
+              aria-label={t(language, 'Vorlesung suchen')}
+              bind:value={metadataQuery}
+            />
+            <div class="metadata-lectures">
+              {#each data.metadataLectures.filter((lecture) => lecture.name
+                  .toLocaleLowerCase('de-DE')
+                  .includes(metadataQuery.trim().toLocaleLowerCase('de-DE'))) as lecture}
+                <label
+                  ><input
+                    type="checkbox"
+                    value={lecture.id}
+                    bind:group={metadataLectureIds}
+                  />{lecture.name}</label
+                >
+              {/each}
+            </div>
+          </fieldset>
+          <label
+            >{t(language, 'Prüfende Personen')}<textarea
+              name="examinerNames"
+              value={data.revision.examiner_ids
+                .map((id: string) => data.examiners.find((examiner) => examiner.id === id)?.name)
+                .filter(Boolean)
+                .join('\n')}></textarea>
+            <span class="hint">{t(language, 'Eine prüfende Person pro Zeile.')}</span>
+          </label>
+          <label
+            >{t(language, 'Semester')}<input
+              name="term"
+              maxlength="100"
+              placeholder="SS2024 / WS2024/25"
+              value={data.revision.term ?? ''}
+            /></label
+          >
+          <label
+            >{t(language, 'Prüfungsdatum')}<input
+              type="date"
+              name="examDate"
+              value={data.revision.exam_date
+                ? new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Europe/Berlin',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                  }).format(new Date(data.revision.exam_date))
+                : ''}
+            /></label
+          >
+          <label
+            >{t(language, 'Anmerkungen')}<textarea
+              name="remarks"
+              maxlength="2000"
+              value={data.revision.remarks}></textarea></label
+          >
+          <button>{t(language, 'Speichern')}</button>
+        </form>
+      </details>{/if}
     <details class="card" open={page.url.hash.startsWith('#revision-')}>
       <summary>{t(language, 'Versionen und Entscheidungen')}</summary>
       {#each data.submission.revisions as revision}<details
@@ -283,9 +358,9 @@
         </details>{/each}
     </details>
     {#if !data.submission.files_deleted_at}
-      <details class="card">
+      <details class="card rescan-panel">
         <summary>{t(language, 'Dateiprüfung erneut ausführen')}</summary>
-        <div class="split">
+        <div class="rescan-controls">
           <div>
             <p class="hint">
               {t(
@@ -503,6 +578,22 @@
 </div>
 
 <style>
+  .metadata-lectures {
+    max-height: 240px;
+    overflow-y: auto;
+    margin-block: 1rem;
+  }
+  .rescan-panel {
+    align-self: start;
+  }
+  .rescan-controls {
+    display: grid;
+    gap: 1rem;
+  }
+  .rescan-controls form {
+    max-width: 32rem;
+    min-width: 0;
+  }
   .review-complete {
     display: flex;
     align-items: center;

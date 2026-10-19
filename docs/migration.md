@@ -23,7 +23,7 @@ All administrators need verified zx accounts. Nominate a replacement for the leg
 ## Rehearsal and cutover
 
 1. Inventory schema, encoding, timezones, hashes, counts and status values. Report missing files, duplicate/invalid accounts, orphan links, negative balances and malformed dates. Resolve or quarantine every exception explicitly.
-2. Import into empty staging with real mail disabled. Run safety checks; accepted legacy status cannot bypass an unsafe file.
+2. Import into empty staging with real mail disabled. Preserve accepted legacy approval; explicitly trusted, previously accepted imports may skip the new virus scan. New uploads retain normal checks. Report incomplete or missing files and omit them from the import.
 3. Reconcile each balance and access expiry, catalogue links, file counts and hashes. Check representative German text and exam metadata.
 4. Repeat the import and a clean rebuild. Rehearse login/password reset and an isolated restore.
 5. Freeze legacy writes and jobs, take final matching snapshots, import, reconcile and smoke-test before switching the proxy. Keep the old deployment read-only for the agreed period.
@@ -34,13 +34,12 @@ Before the new application accepts writes, rollback can restore old routing. Aft
 
 Source comparison on 19 October 2026 found these gaps. Confirm production requirements before implementing them.
 
-- Audited administrator corrections to protocol metadata (`viewexamprotocol.php`).
 - Account links to the user's contributions/access grants and a latest-sign-in field (`userslist.php`).
 - Unverified registrations and dedicated role/status filters in account administration.
 - Completion/anonymisation of account deletion after retention rules are agreed (`RecurringTasksSystem.php`, `RecurringTasksDao.php`). Submitted protocols must survive account removal.
 - A lecture-based ZIP filename and archive index with upload dates and examiners (`download.php`).
 - Audit retention/export policy; do not copy the old log-pruning routine without deciding what must be retained.
 
-User notes and personalised download watermarks are implemented. Required zx administrator accounts, unrewarded improvements, immutable revisions and ledger-based token changes are intentional differences.
+User notes, audited protocol metadata corrections and personalised download watermarks are implemented. Required zx administrator accounts, unrewarded improvements, immutable revision files and ledger-based token changes are intentional differences.
 
 References: [legacy source](https://github.com/fsi-tue/ppi/tree/cf6e8116c4a67b5e230d71329d4fa693076779fd), [public deployment](https://github.com/fsi-tue/docker/tree/master/ppi).

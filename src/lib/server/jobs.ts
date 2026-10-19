@@ -193,13 +193,27 @@ export async function getJobsSummary(actor: Actor) {
   await getBoss();
   const result = (
     await pool.query(
-      `SELECT (SELECT count(*)::integer FROM "${queueSchema()}".job WHERE name=ANY($1::text[]) AND state='failed') total,
-    (SELECT max(last_seen) FROM worker_heartbeat) last_seen`,
+      `SELECT count(*) FILTER(WHERE state='failed')::integer total,
+        count(*) FILTER(WHERE state='failed' AND completed_on>=now()-interval '24 hours')::integer failed_recent,
+        count(*) FILTER(WHERE state='created')::integer queued,
+        count(*) FILTER(WHERE state='active')::integer running,
+        count(*) FILTER(WHERE state='retry')::integer retrying,
+        min(completed_on+deletion_seconds*interval '1 second') FILTER(WHERE state='failed' AND deletion_seconds>0) next_cleanup,
+        (SELECT max(last_seen) FROM worker_heartbeat) last_seen,
+        ARRAY(SELECT name FROM queue_control WHERE paused ORDER BY name) paused_queues
+        FROM "${queueSchema()}".job WHERE name=ANY($1::text[])`,
       [queueNames]
     )
   ).rows[0];
   return {
     total: result.total as number,
+    failedRecent: result.failed_recent as number,
+    failedOlder: result.total - result.failed_recent,
+    queued: result.queued as number,
+    running: result.running as number,
+    retrying: result.retrying as number,
+    nextCleanup: result.next_cleanup?.toISOString() ?? null,
+    pausedQueues: result.paused_queues as string[],
     worker: { lastSeen: result.last_seen?.toISOString() ?? null }
   };
 }

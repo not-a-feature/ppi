@@ -1,4 +1,4 @@
-Gedächtnisprotokoll
+﻿Gedächtnisprotokoll
 ==================
 
 Vorlesung: [Name der Vorlesung]

@@ -9,6 +9,10 @@ export {
 
 export type Actor = { id: string; email: string; isAdmin: boolean };
 
+export const uploadNumberSql = `(SELECT substring(first_file.original_name FROM '_([0-9]+)[.](?:pdf|txt)$')::bigint
+  FROM submission_revision first_revision JOIN stored_file first_file ON first_file.id=first_revision.file_id
+  WHERE first_revision.submission_id=s.id ORDER BY first_revision.revision_number LIMIT 1)`;
+
 export class DomainError extends Error {
   constructor(
     public status: number,

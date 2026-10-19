@@ -24,11 +24,11 @@ Permissions are checked on the server against current account state. Private fil
 
 ## Submissions and decisions
 
-A revision contains exactly one PDF or TXT file, at most 30 MiB. New submissions require an examiner, semester and exam date. Improvements inherit the previous exam date and append immutable revisions. The published revision remains available while an improvement is reviewed. Students cannot delete or withdraw submissions.
+A revision contains exactly one PDF or TXT file, at most 30 MiB. New submissions require an examiner, semester and exam date. The upload dropdown covers the current semester minus six through plus one. Improvements append a revision and inherit the previous exam date and semester, including unknown values. File references and authorship attestations are immutable. The published revision remains available while an improvement is reviewed. Students cannot delete or withdraw submissions.
 
-Students can propose lectures, which stay hidden until approved. Examiner associations belong to lectures; historical examiner names remain with their revisions. New files receive names such as `WS2026-27_2026-10-19_42.pdf`; storage keys remain private UUIDs. Existing filenames are unchanged.
+Students can propose lectures, which stay hidden until approved. Examiner associations belong to lectures; examiner names are stored with each revision. New files receive names such as `WS2026-27_2026-10-19_42.pdf`; storage keys remain private UUIDs. Admin metadata edits rebuild the display filename and invalidate affected ZIPs. Protocol lists use the initial upload number and sort by upload date, newest first.
 
-Technical checks block unsafe files. Duplicate, similarity, content and metadata checks advise reviewers. Content-model moderation is a disabled interface placeholder. Administrators decide publication, request improvements, withdraw content or delete file bytes while keeping metadata and decisions. Version checks reject stale decisions.
+Technical checks block unsafe files. Duplicate, similarity, content and metadata checks advise reviewers. Content-model moderation is a disabled interface placeholder. Administrators decide publication, correct metadata and lecture assignments, request improvements, withdraw content or delete file bytes while keeping metadata and decisions. Metadata edits record before/after values in the audit log. Version checks reject stale edits and decisions.
 
 ## Tokens
 

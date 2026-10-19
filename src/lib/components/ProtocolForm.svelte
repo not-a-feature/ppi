@@ -4,6 +4,7 @@
   import { t, type MessageKey } from '$lib/i18n';
   import { termLabel, termOptions } from '$lib/terms';
   import { MAX_FILE_BYTES } from '$lib/file-limits';
+  import ExaminerSelector from './ExaminerSelector.svelte';
   import CourseSelector, {
     type LectureSelection,
     type UploadLecture
@@ -23,12 +24,14 @@
     examiners,
     requestKey,
     improvement = false,
+    inheritedTerm = '',
     values = {}
   }: {
     lectures: UploadLecture[];
     examiners: { id: string; name: string; lectureIds: string[] }[];
     requestKey: string;
     improvement?: boolean;
+    inheritedTerm?: string;
     values?: FormValues;
   } = $props();
   let language = $derived(page.data.preferences.language);
@@ -207,29 +210,27 @@
     <div class="exam-fields">
       <label for="examinerName"
         >{tr('Prüfende Person')}
-        <input
-          id="examinerName"
-          name="examinerName"
-          required
-          list="examiner-suggestions"
-          maxlength="200"
-          autocomplete="off"
-          value={values.examinerName ||
+        <ExaminerSelector
+          examiners={suggestedExaminers}
+          {language}
+          initialName={values.examinerName ||
             examiners.find((examiner) => examiner.id === values.examinerId)?.name ||
             ''}
-        /><datalist id="examiner-suggestions"
-          >{#each suggestedExaminers as examiner}<option value={examiner.name}
-            ></option>{/each}</datalist
-        ></label
+        /></label
       >
       <label for="term"
-        >{tr('Semester')}<select id="term" name="term" required
-          ><option value="">{tr('Semester auswählen')}</option>{#each semesters as semester}<option
-              value={semester.value}
-              selected={values.term === semester.value}
-              >{termLabel(language, semester.value)}</option
-            >{/each}</select
-        ></label
+        >{tr('Semester')}
+        {#if improvement}
+          <input type="hidden" name="term" value={inheritedTerm} />
+          <select id="term" disabled><option>{termLabel(language, inheritedTerm)}</option></select>
+        {:else}<select id="term" name="term" required
+            ><option value="">{tr('Semester auswählen')}</option
+            >{#each semesters as semester}<option
+                value={semester.value}
+                selected={values.term === semester.value}
+                >{termLabel(language, semester.value)}</option
+              >{/each}</select
+          >{/if}</label
       >
     </div>
     {#if !improvement}<label for="examDate"
@@ -256,8 +257,14 @@
           id="collaboratorZx"
           name="collaboratorZx"
           placeholder="zxabc12, zxdef34"
+          maxlength="600"
+          pattern="[\s,;]*[zZ][xX][a-zA-Z]{3}[0-9]{2}(?:[\s,;]+[zZ][xX][a-zA-Z]{3}[0-9]{2})*[\s,;]*"
+          title={tr('zx-Kennungen mit Komma, Leerzeichen oder Semikolon trennen.')}
+          aria-describedby="collaborator-format"
           value={values.collaboratorZx ?? ''}
-        /></label
+        /><span id="collaborator-format" class="optional"
+          >{tr('zx-Kennungen mit Komma, Leerzeichen oder Semikolon trennen.')}</span
+        ></label
       >{/if}
   </section>
 

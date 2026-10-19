@@ -5,7 +5,8 @@ import {
   requireCondition,
   audit,
   requireId,
-  latestPolicy
+  latestPolicy,
+  uploadNumberSql
 } from './shared.js';
 import { transaction } from '../db.js';
 import type { PoolClient } from 'pg';
@@ -501,14 +502,14 @@ export async function listPublishedProtocolsPage(actor: Actor, lectureId: string
     await requirePublishedLecture(client, lectureId);
     return paginatedCatalogue(
       client,
-      `SELECT s.id,r.id revision_id,r.created_at,r.exam_date,r.term,r.remarks,f.original_name
+      `SELECT s.id,${uploadNumberSql} upload_number,r.id revision_id,s.created_at,r.exam_date,r.term,r.remarks,f.original_name
       FROM submission s JOIN submission_revision r ON r.id=s.published_revision_id JOIN stored_file f ON f.id=r.file_id
       WHERE s.visibility='published' AND s.files_deleted_at IS NULL AND f.deleted_at IS NULL AND f.safety_status='clean'
       AND NOT EXISTS(SELECT 1 FROM revision_lecture other JOIN lecture l ON l.id=other.lecture_id WHERE other.revision_id=r.id AND l.approval_status<>'approved')
       AND EXISTS(SELECT 1 FROM revision_lecture rl WHERE rl.revision_id=r.id AND rl.lecture_id=$1)`,
       [lectureId, actor.id],
       page,
-      'exam_date DESC NULLS LAST,created_at DESC,revision_id',
+      'created_at DESC,id DESC',
       `(SELECT string_agg(e.name, ', ' ORDER BY re.position) FROM revision_examiner re JOIN examiner e ON e.id=re.examiner_id WHERE re.revision_id=selected.revision_id) examiner,
        ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id WHERE rl.revision_id=selected.revision_id ORDER BY l.name) lectures,
        EXISTS(SELECT 1 FROM revision_lecture rl JOIN lecture_access a ON a.lecture_id=rl.lecture_id WHERE rl.revision_id=selected.revision_id AND a.user_id=$2 AND a.expires_at>now()) has_access`

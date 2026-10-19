@@ -32,13 +32,14 @@ beforeEach(() => {
   mocks.submitProtocol.mockResolvedValue({ submissionId: 'submission' });
 });
 
-function event(examinerName: string, examDate: string) {
+function event(examinerName: string, examDate: string, collaborators = '') {
   const form = new FormData();
   form.set('file', new File(['Test exam'], 'exam.txt'));
   form.set('attested', 'on');
   form.set('examinerName', examinerName);
   form.set('examDate', examDate);
   form.set('term', 'WS2026/27');
+  form.set('collaboratorZx', collaborators);
   return {
     locals: { actor: { id: 'student' } },
     params: { id: 'submission' },
@@ -70,6 +71,21 @@ describe('upload required details', () => {
       location: '/submissions/submission'
     });
     expect(mocks.storeUpload).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    'zxabc01,zxdef02',
+    'zxabc01, zxdef02',
+    'zxabc01 zxdef02',
+    'zxabc01; zxdef02',
+    ' zxabc01 ,;  zxdef02 '
+  ])('parses contributor separators: %s', async (raw) => {
+    await expect(action(event('Examiner', '2026-10-01', raw) as never)).rejects.toMatchObject({
+      status: 303
+    });
+    expect(mocks.submitProtocol).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ collaboratorZx: ['zxabc01', 'zxdef02'] })
+    );
   });
 });
 

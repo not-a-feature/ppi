@@ -120,6 +120,39 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       }
     });
 
+    it('counts actionable overview items and excludes processing from ready reviews', async () => {
+      await expect(
+        statistics.getAdminOverview({ ...student, isAdmin: true })
+      ).rejects.toMatchObject({ status: 403 });
+      const before = await statistics.getAdminOverview(admin);
+      expect(before).toMatchObject({ processing: 1, uploadsWeek: 1, activationsWeek: 2 });
+      expect((await domain.listReviewQueuePage(admin, { readyOnly: true })).total).toBe(0);
+      const report = (
+        await pool.query(
+          "INSERT INTO content_report(reporter_id,submission_id,category,explanation) VALUES($1,$2,'other','Overview fixture') RETURNING id",
+          [student.id, submissionId]
+        )
+      ).rows[0].id;
+      const request = (
+        await pool.query(
+          "INSERT INTO token_request(user_id,explanation) VALUES($1,'Overview fixture') RETURNING id",
+          [student.id]
+        )
+      ).rows[0].id;
+      const lecture = (
+        await pool.query(
+          "INSERT INTO lecture(name,normalized_name,approval_status) VALUES('Overview fixture','overview fixture','pending') RETURNING id"
+        )
+      ).rows[0].id;
+      const after = await statistics.getAdminOverview(admin);
+      expect(after.openReports).toBe(before.openReports + 1);
+      expect(after.pendingTokens).toBe(before.pendingTokens + 1);
+      expect(after.pendingLectures).toBe(before.pendingLectures + 1);
+      await pool.query('DELETE FROM content_report WHERE id=$1', [report]);
+      await pool.query('DELETE FROM token_request WHERE id=$1', [request]);
+      await pool.query('DELETE FROM lecture WHERE id=$1', [lecture]);
+    });
+
     it('rejects student escalation and stale deletion without changing files', async () => {
       await expect(
         deletion.requestProtocolFileDeletion(
@@ -220,6 +253,47 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(result.totals.decisions).toBe(1);
       expect(result.series.reduce((sum, day) => sum + day.events, 0)).toBe(result.totals.events);
       expect(result.timezone).toBe('Europe/Berlin');
+    });
+
+    it('returns cumulative registered zx users and protocol totals for every period', async () => {
+      await pool.query(`INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,false)`, [
+        randomUUID(),
+        'Unverified statistics fixture',
+        'zxsta99@student.uni-tuebingen.de'
+      ]);
+      const periods = await statistics.getAdminStatisticsPeriods(admin);
+      for (const range of ['30d', '6m', '1y', 'max'] as const) {
+        const result = periods[range];
+        expect(result.series.length).toBeGreaterThan(0);
+        expect(result.series.at(-1)?.cumulativeRegisteredUsers).toBe(
+          (
+            await pool.query(
+              `SELECT count(*)::integer AS count FROM "user"
+               WHERE email ~ '^zx[a-z]{3}[0-9]{2}@student[.]uni-tuebingen[.]de$'
+                 AND "createdAt"<((($1::date+1)::timestamp) AT TIME ZONE 'Europe/Berlin')`,
+              [result.endDate]
+            )
+          ).rows[0].count
+        );
+        expect(result.series.at(-1)?.cumulativeSubmittedProtocols).toBe(
+          (
+            await pool.query(
+              `SELECT count(*)::integer AS count FROM submission
+               WHERE created_at<((($1::date+1)::timestamp) AT TIME ZONE 'Europe/Berlin')`,
+              [result.endDate]
+            )
+          ).rows[0].count
+        );
+        expect(
+          result.series.every(
+            (point, index, series) =>
+              index === 0 ||
+              (point.cumulativeRegisteredUsers >= series[index - 1].cumulativeRegisteredUsers &&
+                point.cumulativeSubmittedProtocols >=
+                  series[index - 1].cumulativeSubmittedProtocols)
+          )
+        ).toBe(true);
+      }
     });
 
     it('aggregates longer recorded history without a large daily payload', async () => {

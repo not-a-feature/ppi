@@ -20,7 +20,6 @@ import {
   validateProtocolDetails
 } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
-import { isValidTerm } from '$lib/terms';
 export const load: PageServerLoad = async ({ locals, params }) => {
   const current = actor(locals);
   const [submission, lectures, examiners] = await loadResult(() =>
@@ -49,7 +48,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
             day: '2-digit'
           }).format(new Date(revision.exam_date))
         : '',
-      term: isValidTerm(revision.term ?? '') ? revision.term : '',
+      term: revision.term ?? '',
       remarks: revision.remarks,
       collaboratorZx: ''
     },

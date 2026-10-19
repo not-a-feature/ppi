@@ -6,7 +6,8 @@ import {
   requireCondition,
   receipt,
   audit,
-  notify
+  notify,
+  uploadNumberSql
 } from './shared.js';
 import { transaction } from '../db.js';
 import { rewardSubmission } from './credits.js';
@@ -17,6 +18,7 @@ export async function listReviewQueuePage(
     search?: string;
     page?: number;
     includeAll?: boolean;
+    readyOnly?: boolean;
     pageSize?: number;
     paginate?: boolean;
   } = {}
@@ -43,6 +45,10 @@ export async function listReviewQueuePage(
           `s.files_deleted_at IS NULL AND f.deleted_at IS NULL AND s.review_state IN ('processing','awaiting_review','changes_requested')`
         ];
     const values: unknown[] = [];
+    if (options.readyOnly)
+      filters.push(
+        "s.review_state='awaiting_review' AND f.safety_status='clean' AND s.files_deleted_at IS NULL AND f.deleted_at IS NULL"
+      );
     if (search) {
       values.push(search);
       filters.push(
@@ -59,7 +65,7 @@ export async function listReviewQueuePage(
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
-        `SELECT s.*,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail,f.deleted_at file_deleted_at,
+        `SELECT s.*,${uploadNumberSql} upload_number,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail,f.deleted_at file_deleted_at,
           ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id
             WHERE rl.revision_id=r.id ORDER BY l.name,l.id) lecture_names,
           ARRAY(SELECT rl.lecture_id FROM revision_lecture rl WHERE rl.revision_id=r.id) lecture_ids ${from} ${filter}

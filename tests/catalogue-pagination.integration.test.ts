@@ -77,13 +77,13 @@ describe.skipIf(!testUrl)('Catalogue and account pagination beyond 100 entries',
           ]
         );
         await client.query(
-          `INSERT INTO submission(id,uploader_id,current_revision_id,published_revision_id,review_state,visibility)
-          VALUES($1,$2,$3,$3,'accepted','published')`,
-          [submissionId, admin.id, revisionId]
+          `INSERT INTO submission(id,uploader_id,current_revision_id,published_revision_id,review_state,visibility,created_at)
+          VALUES($1,$2,$3,$3,'accepted','published',timestamp '2026-01-01'+$4*interval '1 minute')`,
+          [submissionId, admin.id, revisionId, index]
         );
         await client.query(
           `INSERT INTO submission_revision(id,submission_id,revision_number,file_id,remarks,attested,exam_date)
-          VALUES($1,$2,1,$3,'Pagination fixture',true,date '2026-01-01'+$4::integer)`,
+          VALUES($1,$2,1,$3,'Pagination fixture',true,date '2026-06-01'-$4::integer)`,
           [revisionId, submissionId, fileId, index]
         );
         await client.query('INSERT INTO revision_lecture(revision_id,lecture_id) VALUES($1,$2)', [
@@ -362,6 +362,7 @@ describe.skipIf(!testUrl)('Catalogue and account pagination beyond 100 entries',
       [1, 2, 3, 4].map((page) => domain.listPublishedProtocolsPage(reader, lectureId, page))
     );
     expect(pages[0]).toMatchObject({ total: 105, pageSize: 30 });
+    expect(pages[0].items[0].original_name).toBe('protocol-104.txt');
     expect(new Set(pages.flatMap((page) => page.items.map((row) => row.id))).size).toBe(105);
     const oldest = pages[3].items.at(-1)!;
     expect(oldest.original_name).toBe('protocol-0.txt');

@@ -6,7 +6,8 @@ import {
   bounded,
   zxId,
   receipt,
-  audit
+  audit,
+  uploadNumberSql
 } from './shared.js';
 import { transaction } from '../db.js';
 import { type PoolClient } from 'pg';
@@ -137,7 +138,7 @@ function submissionFingerprint(input: SubmissionInput) {
   };
 }
 
-function validateSubmission(input: SubmissionInput) {
+function validateSubmission(input: SubmissionInput, inheritedTerm?: string) {
   requireCondition(
     input.attested === true,
     400,
@@ -165,7 +166,7 @@ function validateSubmission(input: SubmissionInput) {
       'Use a valid exam date.'
     );
   requireCondition(
-    typeof input.term === 'string' && isValidTerm(input.term),
+    typeof input.term === 'string' && isValidTerm(input.term, new Date(), inheritedTerm),
     400,
     'invalid_term',
     'Choose a valid semester.'
@@ -344,10 +345,29 @@ export async function submitProtocol(actor: Actor, input: SubmissionInput) {
 
 export async function reviseProtocol(actor: Actor, submissionId: string, input: SubmissionInput) {
   requireId(submissionId);
-  input = { ...input, examDate: undefined };
-  validateSubmission(input);
   return transaction(async (client) => {
     const actual = await currentActor(client, actor);
+    const submission = (
+      await client.query(
+        `SELECT s.*,r.revision_number,r.exam_date::text inherited_exam_date,r.term inherited_term
+         FROM submission s JOIN submission_revision r ON r.id=s.current_revision_id WHERE s.id=$1 FOR UPDATE OF s`,
+        [submissionId]
+      )
+    ).rows[0];
+    requireCondition(
+      submission && submission.uploader_id === actor.id,
+      403,
+      'uploader_required',
+      'Only the uploader may improve this protocol.'
+    );
+    requireCondition(
+      !submission.files_deleted_at,
+      409,
+      'files_deleted',
+      'Files were removed from this submission.'
+    );
+    input = { ...input, examDate: undefined, term: submission.inherited_term ?? '' };
+    validateSubmission(input, input.term);
     return receipt(
       client,
       actor,
@@ -355,24 +375,6 @@ export async function reviseProtocol(actor: Actor, submissionId: string, input: 
       input.requestKey,
       { submissionId, input: submissionFingerprint(input) },
       async () => {
-        const submission = (
-          await client.query(
-            `SELECT s.*,r.revision_number,r.exam_date::text inherited_exam_date FROM submission s JOIN submission_revision r ON r.id=s.current_revision_id WHERE s.id=$1 FOR UPDATE OF s`,
-            [submissionId]
-          )
-        ).rows[0];
-        requireCondition(
-          submission && submission.uploader_id === actor.id,
-          403,
-          'uploader_required',
-          'Only the uploader may improve this protocol.'
-        );
-        requireCondition(
-          !submission.files_deleted_at,
-          409,
-          'files_deleted',
-          'Files were removed from this submission.'
-        );
         const result = await appendRevision(
           client,
           submissionId,
@@ -443,7 +445,12 @@ export async function getSubmission(actor: Actor, id: string) {
   requireId(id);
   return transaction(async (client) => {
     const actual = await currentActor(client, actor);
-    const submission = (await client.query('SELECT * FROM submission WHERE id=$1', [id])).rows[0];
+    const submission = (
+      await client.query(
+        `SELECT s.*,${uploadNumberSql} upload_number FROM submission s WHERE s.id=$1`,
+        [id]
+      )
+    ).rows[0];
     requireCondition(
       submission && (actual.isAdmin || submission.uploader_id === actor.id),
       404,
@@ -453,6 +460,7 @@ export async function getSubmission(actor: Actor, id: string) {
     const revisions = (
       await client.query(
         `SELECT r.*,f.original_name,f.safety_status,f.safety_detail,f.deleted_at file_deleted_at,
+        ARRAY(SELECT re.examiner_id FROM revision_examiner re WHERE re.revision_id=r.id ORDER BY re.position) examiner_ids,
       (SELECT string_agg(e.name, ', ' ORDER BY re.position) FROM revision_examiner re JOIN examiner e ON e.id=re.examiner_id WHERE re.revision_id=r.id) examiner_name,
       ARRAY(SELECT lecture_id FROM revision_lecture WHERE revision_id=r.id) lecture_ids,
       ARRAY(SELECT zx FROM contributor_claim WHERE revision_id=r.id) collaborator_zx

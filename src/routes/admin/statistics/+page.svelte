@@ -25,6 +25,31 @@
     { key: 'submissions', color: '#7978d2', label: 'Neue Einreichungen' },
     { key: 'decisions', color: '#cf6b7b', label: 'Prüfentscheidungen' }
   ] as const;
+  const populationMetrics = [
+    {
+      key: 'cumulativeRegisteredUsers',
+      color: 'var(--teal)',
+      label: 'Registrierte Konten'
+    },
+    {
+      key: 'cumulativeSubmittedProtocols',
+      color: '#c98428',
+      label: 'Eingereichte Protokolle'
+    }
+  ] as const;
+  let populationSeries = $derived(
+    populationMetrics.map((metric) => {
+      const values = statistics.series.map((point) => point[metric.key]);
+      const minimum = Math.min(...values),
+        maximum = Math.max(...values);
+      const padding = Math.max(1, (maximum - minimum) * 0.05);
+      return {
+        ...metric,
+        minimum: Math.max(0, Math.floor(minimum - padding)),
+        maximum: Math.ceil(maximum + padding)
+      };
+    })
+  );
   let selected = $state<string[]>(['logins', 'events']);
   const ranges = [
     { value: '30d', label: '30d' },
@@ -48,6 +73,9 @@
   }
   function y(value: number) {
     return 255 - (value / maximum) * 210;
+  }
+  function populationY(value: number, scale: { minimum: number; maximum: number }) {
+    return 255 - ((value - scale.minimum) / (scale.maximum - scale.minimum)) * 210;
   }
   function tick(day: string) {
     return statistics.granularity === 'year'
@@ -151,6 +179,77 @@
     </div>
   </details>
 </section>
+<section class="card population-chart">
+  <h2>{t(language, 'Nutzer und Protokolle')}</h2>
+  <div class="chart-scroll">
+    <svg viewBox="0 0 1000 320" role="img" aria-label={t(language, 'Nutzer und Protokolle')}>
+      <title>{t(language, 'Nutzer und Protokolle')}</title>
+      <desc>{t(language, 'Kumulativer Bestand zum Ende jedes Zeitraums.')}</desc>
+      {#each [0, 0.5, 1] as fraction}
+        <line
+          x1="50"
+          y1={255 - fraction * 210}
+          x2="900"
+          y2={255 - fraction * 210}
+          stroke="var(--line)"
+        />
+        {#each populationSeries as metric, axis}
+          <text
+            x={axis === 0 ? 40 : 910}
+            y={259 - fraction * 210}
+            text-anchor={axis === 0 ? 'end' : 'start'}
+            style:fill={metric.color}
+          >
+            {Number((metric.minimum + (metric.maximum - metric.minimum) * fraction).toFixed(1))}
+          </text>
+        {/each}
+      {/each}
+      {#each populationSeries as metric, axis}
+        <text
+          x={axis === 0 ? 50 : 900}
+          y="22"
+          text-anchor={axis === 0 ? 'start' : 'end'}
+          style:fill={metric.color}
+        >
+          {t(language, metric.label)}
+        </text>
+        <line
+          x1={axis === 0 ? 50 : 900}
+          x2={axis === 0 ? 50 : 900}
+          y1="45"
+          y2="255"
+          stroke={metric.color}
+        />
+      {/each}
+      {#each statistics.series as point, index}
+        {#if index % Math.max(1, Math.ceil(statistics.series.length / 6)) === 0 || index === statistics.series.length - 1}
+          <text x={x(index)} y="279" text-anchor="middle">{tick(point.day)}</text>
+        {/if}
+      {/each}
+      {#each populationSeries as metric}
+        <polyline
+          points={statistics.series
+            .map((point, index) => `${x(index)},${populationY(point[metric.key], metric)}`)
+            .join(' ')}
+          fill="none"
+          stroke={metric.color}
+          stroke-width="2.5"
+        />
+        {#each statistics.series as point, index}
+          <circle
+            cx={x(index)}
+            cy={populationY(point[metric.key], metric)}
+            r="2.6"
+            fill={metric.color}
+          >
+            <title>{point.day} · {t(language, metric.label)}: {point[metric.key]}</title>
+          </circle>
+        {/each}
+      {/each}
+      <text x="475" y="309" text-anchor="middle">{t(language, 'Datum')} · {granularity}</text>
+    </svg>
+  </div>
+</section>
 
 <style>
   .sr-only {
@@ -166,6 +265,9 @@
   }
   .chart-scroll {
     overflow-x: auto;
+  }
+  .population-chart {
+    margin-top: 1.5rem;
   }
   svg {
     display: block;
