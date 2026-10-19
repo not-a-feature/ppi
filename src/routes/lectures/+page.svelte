@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
-  import { afterNavigate, goto, replaceState } from '$app/navigation';
+  import { untrack } from 'svelte';
+  import { afterNavigate, replaceState } from '$app/navigation';
+  import { matchesLecture } from '$lib/catalogue-search';
   import { page } from '$app/state';
   import Pagination from '$lib/components/Pagination.svelte';
   import { t as translate, protocolCountLabel, type MessageKey } from '$lib/i18n';
@@ -10,21 +11,26 @@
   let query = $state(untrack(() => data.q));
   let onlyWithProtocols = $state(untrack(() => data.onlyWithProtocols));
   let view = $state<'cards' | 'list'>(untrack(() => data.view));
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let requestedPage = $state(untrack(() => data.page));
+  let filtered = $derived(
+    data.lectures.filter(
+      (lecture) =>
+        matchesLecture(lecture, query) && (!onlyWithProtocols || lecture.protocol_count > 0)
+    )
+  );
+  let displayPage = $derived(Math.min(requestedPage, Math.max(1, Math.ceil(filtered.length / 30))));
+  let visible = $derived(filtered.slice((displayPage - 1) * 30, displayPage * 30));
   function catalogueUrl() {
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
     if (!onlyWithProtocols) params.set('files', 'all');
     if (view === 'list') params.set('view', 'list');
+    if (requestedPage > 1) params.set('page', String(requestedPage));
     return '/lectures' + (params.size ? '?' + params.toString() : '');
   }
-  function searchNow() {
-    clearTimeout(timer);
-    void goto(catalogueUrl(), { replaceState: true, keepFocus: true, noScroll: true });
-  }
-  function scheduleSearch() {
-    clearTimeout(timer);
-    timer = setTimeout(searchNow, 250);
+  function searchNow(resetPage = true) {
+    if (resetPage) requestedPage = 1;
+    replaceState(catalogueUrl(), page.state);
   }
   function changeView(next: 'cards' | 'list') {
     view = next;
@@ -38,8 +44,8 @@
     query = to.url.searchParams.get('q') ?? '';
     onlyWithProtocols = to.url.searchParams.get('files') !== 'all';
     view = to.url.searchParams.get('view') === 'list' ? 'list' : 'cards';
+    requestedPage = Math.max(1, Number(to.url.searchParams.get('page')) || 1);
   });
-  onDestroy(() => clearTimeout(timer));
 </script>
 
 <div class="catalogue-heading"><h1>{t('Prüfungsprotokolle')}</h1></div>
@@ -64,7 +70,10 @@
         type="search"
         placeholder={t('Name der Veranstaltung')}
         bind:value={query}
-        oninput={scheduleSearch}
+        oninput={(event) => {
+          query = event.currentTarget.value;
+          searchNow();
+        }}
         maxlength="200"
         autocomplete="off"
       />
@@ -103,15 +112,15 @@
     </div>
   </div>
   <div class="results-heading">
-    <h2>{data.q ? t('Suchergebnisse') : t('catalogue.courses')}</h2>
+    <h2>{query ? t('Suchergebnisse') : t('catalogue.courses')}</h2>
     <span aria-live="polite"
-      >{data.lecturesPage.total}
-      {t(data.lecturesPage.total === 1 ? 'catalogue.course' : 'catalogue.courseCount')}</span
+      >{filtered.length}
+      {t(filtered.length === 1 ? 'catalogue.course' : 'catalogue.courseCount')}</span
     >
   </div>
-  {#if data.lectures.length}
+  {#if visible.length}
     <div class:cards={view === 'cards'} class:list={view === 'list'} class="lecture-results">
-      {#each data.lectures as lecture}
+      {#each visible as lecture}
         <a class="lecture-item" href="/lectures/{lecture.id}">
           <h3>{lecture.name}</h3>
           <span class="protocol-count"
@@ -151,9 +160,13 @@
     </div>
   {/if}
   <Pagination
-    page={data.lecturesPage.page}
-    total={data.lecturesPage.total}
-    pageSize={data.lecturesPage.pageSize}
+    page={displayPage}
+    total={filtered.length}
+    pageSize={30}
+    onPageChange={(next) => {
+      requestedPage = next;
+      searchNow(false);
+    }}
   />
 </section>
 

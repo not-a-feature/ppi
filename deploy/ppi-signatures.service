@@ -1,0 +1,9 @@
+[Unit]
+Description=Update PPI antivirus signatures
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ppi
+ExecStart=/usr/bin/docker compose -f compose.test.yaml run --rm --no-deps signatures

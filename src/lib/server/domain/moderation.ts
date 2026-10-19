@@ -13,7 +13,13 @@ import { rewardSubmission } from './credits.js';
 
 export async function listReviewQueuePage(
   actor: Actor,
-  options: { search?: string; page?: number; includeAll?: boolean; pageSize?: number } = {}
+  options: {
+    search?: string;
+    page?: number;
+    includeAll?: boolean;
+    pageSize?: number;
+    paginate?: boolean;
+  } = {}
 ) {
   const { search = '', page: requestedPage = 1, includeAll = false, pageSize = 30 } = options;
   requireCondition(
@@ -52,19 +58,21 @@ export async function listReviewQueuePage(
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
-        `SELECT s.*,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail,
+        `SELECT s.*,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail,f.deleted_at file_deleted_at,
           ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id
-            WHERE rl.revision_id=r.id ORDER BY l.name,l.id) lecture_names ${from} ${filter}
-      ORDER BY s.created_at,s.id LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-        [...values, pageSize, (page - 1) * pageSize]
+            WHERE rl.revision_id=r.id ORDER BY l.name,l.id) lecture_names,
+          ARRAY(SELECT rl.lecture_id FROM revision_lecture rl WHERE rl.revision_id=r.id) lecture_ids ${from} ${filter}
+      ORDER BY s.created_at DESC,s.id DESC ${options.paginate === false ? '' : `LIMIT $${values.length + 1} OFFSET $${values.length + 2}`}`,
+        options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
     return { entries, total, page, pageSize };
   });
 }
 
-export async function getNextReview(actor: Actor, submissionId: string) {
+export async function getNextReview(actor: Actor, submissionId: string, lectureId?: string) {
   requireId(submissionId);
+  if (lectureId) requireId(lectureId);
   return transaction(async (client) => {
     await currentActor(client, actor, true);
     const result = await client.query<{ id: string; original_name: string }>(
@@ -74,9 +82,10 @@ export async function getNextReview(actor: Actor, submissionId: string) {
        JOIN submission current ON current.id=$1
        WHERE s.id<>current.id AND s.review_state='awaiting_review'
          AND s.files_deleted_at IS NULL AND f.deleted_at IS NULL AND f.safety_status='clean'
-       ORDER BY (s.created_at,s.id)>(current.created_at,current.id) DESC,s.created_at,s.id
+         AND ($2::uuid IS NULL OR EXISTS(SELECT 1 FROM revision_lecture rl WHERE rl.revision_id=r.id AND rl.lecture_id=$2))
+       ORDER BY (s.created_at,s.id)<(current.created_at,current.id) DESC,s.created_at DESC,s.id DESC
        LIMIT 1`,
-      [submissionId]
+      [submissionId, lectureId ?? null]
     );
     return result.rows[0] ?? null;
   });

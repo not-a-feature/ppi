@@ -1,7 +1,13 @@
 <script lang="ts">
   import { page as currentPage } from '$app/state';
   import { t } from '$lib/i18n';
-  let { page, total, pageSize }: { page: number; total: number; pageSize: number } = $props();
+  let {
+    page,
+    total,
+    pageSize,
+    onPageChange
+  }: { page: number; total: number; pageSize: number; onPageChange?: (page: number) => void } =
+    $props();
   let language = $derived(currentPage.data.preferences?.language ?? 'de');
   let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
   function href(target: number) {
@@ -21,11 +27,27 @@
     {page} / {pages}</span
   >
   <div class="actions">
-    {#if page > 1}<a class="button secondary" href={href(page - 1)} rel="prev"
-        >{t(language, 'Zurück')}</a
+    {#if page > 1}<a
+        class="button secondary"
+        href={href(page - 1)}
+        rel="prev"
+        onclick={(event) => {
+          if (onPageChange) {
+            event.preventDefault();
+            onPageChange(page - 1);
+          }
+        }}>{t(language, 'Zurück')}</a
       >{/if}
-    {#if page < pages}<a class="button secondary" href={href(page + 1)} rel="next"
-        >{t(language, 'Weiter')}</a
+    {#if page < pages}<a
+        class="button secondary"
+        href={href(page + 1)}
+        rel="next"
+        onclick={(event) => {
+          if (onPageChange) {
+            event.preventDefault();
+            onPageChange(page + 1);
+          }
+        }}>{t(language, 'Weiter')}</a
       >{/if}
   </div>
 </nav>

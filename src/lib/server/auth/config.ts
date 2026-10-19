@@ -8,9 +8,12 @@ import { studentEmailPattern } from './policy';
 import { currentActor } from './session';
 import { clientAddressHeader } from './client-address';
 
+const verificationTokenLifetime = 60 * 60;
+const resetPasswordTokenLifetime = 30 * 60;
+
 export function createAuth(plugins: BetterAuthOptions['plugins'] = [], building = false) {
   return betterAuth({
-    appName: 'PPI-2',
+    appName: 'PPI',
     baseURL: process.env.ORIGIN ?? 'http://localhost:5173',
     secret: building
       ? 'build-time-placeholder-only-never-runtime-2a75e948bfc039df'
@@ -29,32 +32,32 @@ export function createAuth(plugins: BetterAuthOptions['plugins'] = [], building 
       autoSignIn: false,
       minPasswordLength: 12,
       maxPasswordLength: 128,
-      resetPasswordTokenExpiresIn: 30 * 60,
+      resetPasswordTokenExpiresIn: resetPasswordTokenLifetime,
       revokeSessionsOnPasswordReset: true,
       async sendResetPassword({ user, url }) {
         await enqueueEmail({
           to: user.email,
-          subject: 'PPI-2: Passwort zurücksetzen / Reset password',
-          expiresInSeconds: 30 * 60,
-          text: `Setze dein Passwort mit diesem Link zurück. / Reset your password using this link:\n${url}\n\nDer Link gilt 30 Minuten. / This link expires in 30 minutes.`
+          subject: 'PPI | Passwort zurücksetzen / Reset your password',
+          expiresInSeconds: resetPasswordTokenLifetime,
+          text: `Hallo,\n\nwir haben eine Anfrage zum Zurücksetzen des Passworts für dein PPI-Konto erhalten. Mit diesem Link legst du ein neues Passwort fest. / We received a request to reset the password for your PPI account. Use this link to set a new password.\n\nPasswort zurücksetzen / Reset password:\n${url}\n\nDer Link ist 30 Minuten gültig. Wenn du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren. / This link expires in 30 minutes. If you didn't request it, you can ignore this email.`
         });
       }
     },
     emailVerification: {
       sendOnSignUp: true,
       sendOnSignIn: true,
-      expiresIn: 60 * 60,
+      expiresIn: verificationTokenLifetime,
       autoSignInAfterVerification: false,
       async sendVerificationEmail({ user, url, token }) {
         await pool.query(
-          `INSERT INTO auth_email_token(token_hash,expires_at) VALUES($1,now()+interval '1 hour') ON CONFLICT DO NOTHING`,
-          [createHash('sha256').update(token).digest('hex')]
+          `INSERT INTO auth_email_token(token_hash,expires_at) VALUES($1,now()+($2 * interval '1 second')) ON CONFLICT DO NOTHING`,
+          [createHash('sha256').update(token).digest('hex'), verificationTokenLifetime]
         );
         await enqueueEmail({
           to: user.email,
-          subject: 'PPI-2: E-Mail bestätigen / Verify email',
-          expiresInSeconds: 60 * 60,
-          text: `Bestätige deine E-Mail-Adresse mit diesem Link. / Verify your email using this link:\n${url}\n\nDer Link gilt eine Stunde. / This link expires in one hour.`
+          subject: 'PPI | E-Mail-Adresse bestätigen / Verify your email',
+          expiresInSeconds: verificationTokenLifetime,
+          text: `Hallo,\n\nbestätige deine studentische E-Mail-Adresse, um dein PPI-Konto zu aktivieren. / Verify your student email address to activate your PPI account.\n\nE-Mail-Adresse bestätigen / Verify email:\n${url}\n\nDer Link ist eine Stunde gültig. Wenn du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren. / This link expires in one hour. If you didn't request it, you can ignore this email.`
         });
       },
       async afterEmailVerification(user) {

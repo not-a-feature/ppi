@@ -142,11 +142,20 @@ describe.skipIf(!testUrl)('moderation regression transactions and actions', () =
     ]);
 
     const currentId = entries[1].submissionId;
+    const queue = await domain.listReviewQueuePage(admin, { includeAll: true, paginate: false });
+    expect(queue.entries.map((entry) => entry.id)).toEqual(
+      entries.map((entry) => entry.submissionId).reverse()
+    );
+    expect(queue.entries[0].lecture_ids).toEqual([lectureId]);
     expect(await domain.getNextReview(admin, currentId)).toMatchObject({
-      id: entries[9].submissionId
+      id: entries[0].submissionId
     });
+    expect(await domain.getNextReview(admin, currentId, lectureId)).toMatchObject({
+      id: entries[0].submissionId
+    });
+    expect(await domain.getNextReview(admin, currentId, randomUUID())).toBeNull();
     await db.pool.query("UPDATE submission SET review_state='rejected' WHERE id=$1", [
-      entries[9].submissionId
+      entries[0].submissionId
     ]);
     expect(await domain.getNextReview(admin, currentId)).toMatchObject({
       id: entries[10].submissionId
@@ -155,10 +164,10 @@ describe.skipIf(!testUrl)('moderation regression transactions and actions', () =
       entries[10].submissionId
     ]);
     expect(await domain.getNextReview(admin, currentId)).toMatchObject({
-      id: entries[0].submissionId
+      id: entries[9].submissionId
     });
     await db.pool.query("UPDATE submission SET review_state='rejected' WHERE id=$1", [
-      entries[0].submissionId
+      entries[9].submissionId
     ]);
     expect(await domain.getNextReview(admin, currentId)).toBeNull();
     await expect(domain.getNextReview(student, currentId)).rejects.toMatchObject({

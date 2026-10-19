@@ -83,12 +83,12 @@ describe('review catalogue context', () => {
     expect(domain.listLecturesPage).not.toHaveBeenCalled();
   });
 
-  it('keeps ordinary catalogue searches paginated', async () => {
+  it('loads the complete catalogue for local filtering and preserves initial filter state', async () => {
     domain.listLecturesPage.mockResolvedValue({ items: [], page: 2, pageSize: 30, total: 40 });
     const result = await loadCatalogue('?q=Biology&status=pending&page=2');
     expect(domain.listLecturesPage).toHaveBeenCalledWith(
       { id: 'admin', isAdmin: true },
-      { search: 'Biology', page: 2, includeProposals: true, approvalStatus: 'pending' }
+      { includeProposals: true, paginate: false }
     );
     expect(domain.getSubmission).not.toHaveBeenCalled();
     expect(result).toMatchObject({ reviewHref: null, reviewReady: false, page: 2 });

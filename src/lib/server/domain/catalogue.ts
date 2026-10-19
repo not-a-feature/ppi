@@ -28,8 +28,18 @@ async function paginatedCatalogue(
   values: unknown[],
   requestedPage: number,
   orderBy: string,
-  enrichment = ''
+  enrichment = '',
+  paginate = true
 ) {
+  if (!paginate) {
+    const items = (
+      await client.query(
+        `WITH selected AS (${sql}) SELECT selected.*${enrichment ? `,${enrichment}` : ''} FROM selected ORDER BY ${orderBy}`,
+        values
+      )
+    ).rows;
+    return { items, page: 1, total: items.length, pageSize: CATALOGUE_PAGE_SIZE };
+  }
   const sizeIndex = values.length + 1,
     pageIndex = values.length + 2;
   const result = (
@@ -67,6 +77,7 @@ export async function listLecturesPage(
     includeProposals?: boolean;
     onlyWithProtocols?: boolean;
     approvalStatus?: 'all' | 'pending' | 'approved' | 'rejected';
+    paginate?: boolean;
   } = {}
 ) {
   const {
@@ -74,7 +85,8 @@ export async function listLecturesPage(
     page = 1,
     includeProposals = false,
     onlyWithProtocols = false,
-    approvalStatus = 'all'
+    approvalStatus = 'all',
+    paginate = true
   } = options;
   requireCondition(
     ['all', 'pending', 'approved', 'rejected'].includes(approvalStatus),
@@ -104,7 +116,8 @@ export async function listLecturesPage(
       page,
       'name,id',
       `(SELECT count(*)::integer ${visibleLectureProtocols.replace('rl.lecture_id=l.id', 'rl.lecture_id=selected.id')}) protocol_count,
-       (SELECT a.expires_at FROM lecture_access a WHERE a.lecture_id=selected.id AND a.user_id=$1 AND a.expires_at>now()) expires_at`
+       (SELECT a.expires_at FROM lecture_access a WHERE a.lecture_id=selected.id AND a.user_id=$1 AND a.expires_at>now()) expires_at`,
+      paginate
     );
   });
 }
@@ -489,7 +502,7 @@ export async function listPublishedProtocolsPage(actor: Actor, lectureId: string
       [lectureId, actor.id],
       page,
       'exam_date DESC NULLS LAST,created_at DESC,revision_id',
-      `(SELECT e.name FROM submission_revision r JOIN examiner e ON e.id=r.examiner_id WHERE r.id=selected.revision_id) examiner,
+      `(SELECT string_agg(e.name, ', ' ORDER BY re.position) FROM revision_examiner re JOIN examiner e ON e.id=re.examiner_id WHERE re.revision_id=selected.revision_id) examiner,
        ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id WHERE rl.revision_id=selected.revision_id ORDER BY l.name) lectures,
        EXISTS(SELECT 1 FROM revision_lecture rl JOIN lecture_access a ON a.lecture_id=rl.lecture_id WHERE rl.revision_id=selected.revision_id AND a.user_id=$2 AND a.expires_at>now()) has_access`
     );

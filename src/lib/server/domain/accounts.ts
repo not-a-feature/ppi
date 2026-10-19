@@ -62,7 +62,7 @@ export async function activateAccount(userId: string) {
 
 export async function listAdminUsersPage(
   actor: Actor,
-  options: { search?: string; page?: number } = {}
+  options: { search?: string; page?: number; paginate?: boolean } = {}
 ) {
   const { search = '', page: requestedPage = 1 } = options;
   requireCondition(
@@ -89,8 +89,8 @@ export async function listAdminUsersPage(
     const entries = (
       await client.query(
         `SELECT u.id,u.email,u."emailVerified" email_verified,p.is_admin,p.status,p.admin_note,p.note_version,p.note_updated_at,COALESCE(c.balance,0) balance ${from} ${filter}
-      ORDER BY u.email,u.id LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-        [...values, pageSize, (page - 1) * pageSize]
+      ORDER BY u.email,u.id ${options.paginate === false ? '' : `LIMIT $${values.length + 1} OFFSET $${values.length + 2}`}`,
+        options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
     return { entries, total, page, pageSize };

@@ -2,6 +2,10 @@
 
 The root [README](../README.md) covers local setup. `compose.yaml` provides development PostgreSQL, Mailpit and an optional worker; it is not a complete production deployment. Production infrastructure and migration are still pending.
 
+The separate [test-server Compose file](../deploy/compose.test.yaml) runs web, worker, PostgreSQL and a private mail viewer under `/opt/ppi`, with application source in `source/`. Supply protected `app.env`, `mail.env` and `db.env` files, a restricted runtime database role, and an HTTPS host proxy that overwrites forwarded headers. SMTP credentials belong only in the worker's `mail.env`. The application listener and mail viewer bind to loopback; the database has no published port. Authenticated SMTP requires TLS. The website uses the normal verified-account login.
+
+Run the `signatures` service before starting the worker, then install the supplied `ppi-signatures` systemd service and timer for daily updates. Certificate renewal must also reload the host proxy. A test deployment does not replace the production checks below or the final migration rehearsal.
+
 ## Verification
 
 Use Node.js 24 and the locked dependencies. Database tests create isolated schemas in a disposable PostgreSQL database; never point `TEST_DATABASE_URL` at production.

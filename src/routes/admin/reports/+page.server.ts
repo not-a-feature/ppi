@@ -8,10 +8,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const q = (url.searchParams.get('q') ?? '').trim();
   const requestedPage = Number(url.searchParams.get('page') ?? 1);
   const scope = url.searchParams.get('scope') === 'all' ? 'all' : 'pending';
-  const result = await loadResult(() =>
-    listAdminEntries(current, 'reports', { search: q, page: requestedPage, scope })
-  );
-  return { ...result, q, scope };
+  const result = await loadResult(() => listAdminEntries(current, 'reports', { paginate: false }));
+  return {
+    ...result,
+    q,
+    scope,
+    page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
+  };
 };
 export const actions: Actions = {
   report: async ({ locals, request }) => {

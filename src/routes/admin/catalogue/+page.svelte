@@ -1,5 +1,8 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { untrack } from 'svelte';
+  import { afterNavigate, replaceState } from '$app/navigation';
+  import { matchesLecture } from '$lib/catalogue-search';
   import type { SubmitFunction } from '@sveltejs/kit';
   import { t, protocolCountLabel } from '$lib/i18n';
   import { page } from '$app/state';
@@ -10,6 +13,37 @@
   let { data, form } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
   let editingId = $state<string | null>(null);
+  let query = $state(untrack(() => data.q));
+  let status = $state(untrack(() => data.approvalStatus));
+  let requestedPage = $state(untrack(() => data.page));
+  let filtered = $derived(
+    data.reviewHref
+      ? data.entries
+      : data.entries.filter(
+          (entry) =>
+            matchesLecture(entry, query) && (status === 'all' || entry.approval_status === status)
+        )
+  );
+  let displayPage = $derived(Math.min(requestedPage, Math.max(1, Math.ceil(filtered.length / 30))));
+  let entries = $derived(
+    data.reviewHref ? filtered : filtered.slice((displayPage - 1) * 30, displayPage * 30)
+  );
+  function updateUrl() {
+    const url = new URL(page.url);
+    url.searchParams.delete('q');
+    url.searchParams.delete('status');
+    url.searchParams.delete('page');
+    if (query) url.searchParams.set('q', query);
+    if (status !== 'all') url.searchParams.set('status', status);
+    if (requestedPage > 1) url.searchParams.set('page', String(requestedPage));
+    replaceState(url, page.state);
+  }
+  afterNavigate(({ type, to }) => {
+    if (!to || (type !== 'link' && type !== 'popstate')) return;
+    query = to.url.searchParams.get('q') ?? '';
+    status = to.url.searchParams.get('status') ?? 'all';
+    requestedPage = Math.max(1, Number(to.url.searchParams.get('page')) || 1);
+  });
   const preserveEditor: SubmitFunction =
     () =>
     async ({ update }) => {
@@ -30,10 +64,18 @@
     · <a href="/admin/catalogue">{t(language, 'Alle Veranstaltungen')}</a>
   </div>
 {:else}
-  <SearchForm query={data.q}>
+  <SearchForm
+    {query}
+    onSearch={(values) => {
+      query = String(values.get('q') ?? '');
+      status = String(values.get('status') ?? 'all') as typeof status;
+      requestedPage = 1;
+      updateUrl();
+    }}
+  >
     <label for="status">
       {t(language, 'Freigabestatus')}
-      <select id="status" name="status" value={data.approvalStatus}>
+      <select id="status" name="status" value={status}>
         <option value="all">{t(language, 'Alle')}</option>
         <option value="pending">{t(language, 'Wartet auf Prüfung')}</option>
         <option value="approved">{t(language, 'Freigegeben')}</option>
@@ -66,11 +108,13 @@
 
 <section class="card">
   <h2>{t(language, 'Veranstaltungen')}</h2>
-  {#each data.entries as entry (entry.id)}
+  {#each entries as entry (entry.id)}
     <article class="lecture-entry" aria-labelledby="lecture-name-{entry.id}">
       <div class="lecture-heading">
         <div>
-          <h3 id="lecture-name-{entry.id}"><a href="/lectures/{entry.id}">{entry.name}</a></h3>
+          <h3 id="lecture-name-{entry.id}">
+            <a href="/admin/review?lecture={entry.id}&scope=all">{entry.name}</a>
+          </h3>
           <p class="hint lecture-status">
             {#if !data.reviewHref}
               <span
@@ -218,9 +262,13 @@
 </section>
 
 {#if !data.reviewHref}<Pagination
-    page={data.page}
-    total={data.total}
-    pageSize={data.pageSize}
+    page={displayPage}
+    total={filtered.length}
+    pageSize={30}
+    onPageChange={(next) => {
+      requestedPage = next;
+      updateUrl();
+    }}
   />{/if}
 
 <style>

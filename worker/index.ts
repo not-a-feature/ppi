@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import nodemailer from 'nodemailer';
+import { renderEmailHtml } from '../src/lib/server/email.js';
 import { pool, transaction } from '../src/lib/server/db.js';
 import { completeFileCheck, processPeriodicGrant } from '../src/lib/server/domain/index.js';
 import {
@@ -33,6 +34,7 @@ const transport = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT ?? 587),
   secure: process.env.SMTP_SECURE === 'true',
+  requireTLS: Boolean(process.env.SMTP_USER),
   auth: process.env.SMTP_USER
     ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD }
     : undefined,
@@ -162,6 +164,7 @@ async function sendNotification(data: Record<string, unknown>) {
     to: mail.recipient,
     subject: mail.subject,
     text: mail.body,
+    html: renderEmailHtml(mail.subject, mail.body, process.env.ORIGIN ?? 'http://localhost:5173'),
     messageId: `<ppi-${mail.id}@notifications.local>`
   });
   if (data.emailId)

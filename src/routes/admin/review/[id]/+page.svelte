@@ -150,7 +150,7 @@
 <div class="page-head">
   <div>
     <p class="eyebrow">
-      <a href="/admin/review">{t(language, 'Prüfwarteschlange')}</a>
+      <a href={data.reviewListHref}>{t(language, 'Prüfwarteschlange')}</a>
       {t(language, '/ Einreichung')}
     </p>
     <h1>{lectureTitle}</h1>
@@ -174,9 +174,9 @@
       {/if}
     </div>
     <div class="actions">
-      <a class="button secondary" href="/admin/review">{t(language, 'Prüfwarteschlange')}</a>
+      <a class="button secondary" href={data.reviewListHref}>{t(language, 'Prüfwarteschlange')}</a>
       {#if data.nextReview}
-        <a class="button" href="/admin/review/{data.nextReview.id}">
+        <a class="button" href="/admin/review/{data.nextReview.id}{data.reviewContext}">
           {t(language, 'Nächstes Protokoll')}
         </a>
       {/if}
@@ -232,8 +232,7 @@
         </dd>
         <dt>{t(language, 'Prüfende Person')}</dt>
         <dd>
-          {data.examiners.find((e) => e.id === data.revision.examiner_id)?.name ||
-            t(language, 'Nicht angegeben')}
+          {data.revision.examiner_name || t(language, 'Nicht angegeben')}
         </dd>
         <dt>{t(language, 'Semester')}</dt>
         <dd>{termLabel(language, data.revision.term)}</dd>
@@ -405,12 +404,12 @@
               )}
             </div>
             {#each data.submission.rewardRecipients as recipient}<p class="hint">
-                {recipient.email}: {recipient.amount}
+                {recipient.email.split('@')[0]}: {recipient.amount}
                 {t(language, 'Tokens')}
               </p>{/each}{:else if reward !== 'none' && !rewardDisabled}<div class="notice">
               <strong>{t(language, 'Ausgabe:')} {additional} {t(language, 'Tokens gesamt')}</strong
               >{#each preview.recipients as recipient}<p class="hint" style="margin:.4rem 0">
-                  {recipient.email}: {recipient.amount}
+                  {recipient.email.split('@')[0]}: {recipient.amount}
                   {t(language, 'Tokens')}
                 </p>{/each}
             </div>{/if}

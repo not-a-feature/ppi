@@ -249,6 +249,10 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL job delivery and con
     const first = await jobs.getJobs(admin, { search: 'delete_files' });
     expect(first.total).toBe(109);
     expect(first.jobs).toHaveLength(50);
+    const complete = await jobs.getJobs(admin, { search: 'delete_files', paginate: false });
+    expect(complete.jobs).toHaveLength(109);
+    expect(complete.jobs.some((job) => job.id === old)).toBe(true);
+    expect(JSON.stringify(complete.jobs)).not.toContain(secret);
     const last = await jobs.getJobs(admin, { search: 'delete_files', page: 3 });
     expect(last.jobs).toHaveLength(9);
     expect(last.jobs.some((job) => job.id === old)).toBe(true);

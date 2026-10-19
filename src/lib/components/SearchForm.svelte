@@ -1,32 +1,26 @@
 <script lang="ts">
-  import { onDestroy, untrack, type Snippet } from 'svelte';
-  import { afterNavigate, goto } from '$app/navigation';
+  import { untrack, type Snippet } from 'svelte';
+  import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { t } from '$lib/i18n';
 
-  let { query, children }: { query: string; children?: Snippet } = $props();
+  let {
+    query,
+    children,
+    onSearch
+  }: { query: string; children?: Snippet; onSearch: (form: FormData) => void } = $props();
   let draft = $state(untrack(() => query));
   let form: HTMLFormElement;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let language = $derived(page.data.preferences?.language ?? 'de');
 
   function searchNow() {
-    clearTimeout(timer);
-    const url = new URL(page.url);
-    url.search = '';
-    for (const [name, value] of new FormData(form)) {
-      if (typeof value === 'string' && value.trim()) url.searchParams.append(name, value.trim());
-    }
-    if (url.href !== page.url.href)
-      void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+    onSearch(new FormData(form));
   }
 
   afterNavigate(({ type, to }) => {
     if (!to || (type !== 'popstate' && type !== 'link')) return;
-    clearTimeout(timer);
     draft = to.url.searchParams.get('q') ?? '';
   });
-  onDestroy(() => clearTimeout(timer));
 </script>
 
 <form
@@ -44,17 +38,7 @@
 >
   <label for="q">
     {t(language, 'Suchen')}
-    <input
-      id="q"
-      name="q"
-      type="search"
-      maxlength="200"
-      bind:value={draft}
-      oninput={() => {
-        clearTimeout(timer);
-        timer = setTimeout(searchNow, 250);
-      }}
-    />
+    <input id="q" name="q" type="search" maxlength="200" bind:value={draft} oninput={searchNow} />
   </label>
   {@render children?.()}
   <noscript><button class="secondary">{t(language, 'Suchen')}</button></noscript>

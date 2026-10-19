@@ -16,8 +16,9 @@ import { admin, field, actionResult, loadResult } from '../../../_helpers';
 import { requestProtocolFileDeletion } from '$lib/server/deletion';
 import { getContentChecks, requestContentCheck } from '$lib/server/content-checks';
 import type { Actions, PageServerLoad } from './$types';
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
   const current = admin(locals);
+  const lectureId = url.searchParams.get('lecture') ?? undefined;
   const [submission, policy, examiners] = await loadResult(() =>
     Promise.all([getSubmission(current, params.id), getSettings(current), listExaminers(current)])
   );
@@ -34,7 +35,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     Promise.all([
       getRewardPreview(current, revision.id, 'base'),
       getRewardPreview(current, revision.id, 'excellent'),
-      getNextReview(current, params.id),
+      getNextReview(current, params.id, lectureId),
       submission.files_deleted_at ? null : getContentChecks(current, params.id)
     ])
   );
@@ -45,6 +46,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     basePreview,
     excellentPreview,
     nextReview,
+    reviewListHref: lectureId ? `/admin/review?lecture=${lectureId}&scope=all` : '/admin/review',
+    reviewContext: lectureId ? `?lecture=${lectureId}` : '',
     contentChecks,
     lectures,
     examiners,

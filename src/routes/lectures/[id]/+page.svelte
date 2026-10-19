@@ -41,7 +41,6 @@
           <h3>
             {protocol.examiner || t('Prüfende Person nicht angegeben')}
           </h3>
-          <span>{t('Geprüft')}</span>
         </div>
         <dl>
           <div>
@@ -217,11 +216,6 @@
     margin: 0;
     letter-spacing: -0.015em;
   }
-  .protocol-title > span {
-    font-size: 0.74rem;
-    color: var(--muted);
-    flex: none;
-  }
   .protocol-entry dl {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -396,9 +390,6 @@
     }
     .access-panel button {
       width: auto;
-    }
-    .protocol-title > span {
-      font-size: 0.7rem;
     }
   }
 </style>

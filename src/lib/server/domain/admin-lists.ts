@@ -44,7 +44,7 @@ const searchFields = {
 export async function listAdminEntries(
   actor: Actor,
   section: keyof typeof queries,
-  options: { search?: string; page?: number; scope?: string } = {}
+  options: { search?: string; page?: number; scope?: string; paginate?: boolean } = {}
 ) {
   const { search = '', page: requestedPage = 1, scope = 'all' } = options;
   requireCondition(
@@ -78,8 +78,8 @@ export async function listAdminEntries(
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
-        `SELECT * FROM (${queries[section]}) entry ${filter} ORDER BY created_at DESC,id DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-        [...values, pageSize, (page - 1) * pageSize]
+        `SELECT * FROM (${queries[section]}) entry ${filter} ORDER BY created_at DESC,id DESC ${options.paginate === false ? '' : `LIMIT $${values.length + 1} OFFSET $${values.length + 2}`}`,
+        options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
     return { entries, page, total, pageSize };

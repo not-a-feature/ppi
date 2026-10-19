@@ -1,7 +1,23 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { untrack } from 'svelte';
+  import { afterNavigate, replaceState } from '$app/navigation';
   import { t } from '$lib/i18n';
   let { data } = $props();
+  let period = $state<'30d' | '6m' | '1y' | 'max'>(
+    untrack(() => data.range as '30d' | '6m' | '1y' | 'max')
+  );
+  let statistics = $derived(data.periods[period]);
+  function changePeriod(value: typeof period) {
+    period = value;
+    const url = new URL(page.url);
+    url.searchParams.set('range', value);
+    replaceState(url, page.state);
+  }
+  afterNavigate(({ type, to }) => {
+    if (to && (type === 'link' || type === 'popstate'))
+      period = (to.url.searchParams.get('range') ?? '30d') as typeof period;
+  });
   let language = $derived(page.data.preferences.language);
   const metrics = [
     { key: 'logins', color: 'var(--teal)', label: 'Erfasste Anmeldungen' },
@@ -18,28 +34,25 @@
   ] as const;
   let visible = $derived(metrics.filter((metric) => selected.includes(metric.key)));
   let maximum = $derived(
-    Math.max(
-      1,
-      ...data.statistics.series.flatMap((point) => visible.map((metric) => point[metric.key]))
-    )
+    Math.max(1, ...statistics.series.flatMap((point) => visible.map((metric) => point[metric.key])))
   );
   let granularity = $derived(
-    data.statistics.granularity === 'year'
+    statistics.granularity === 'year'
       ? t(language, 'Jährlich')
-      : data.statistics.granularity === 'month'
+      : statistics.granularity === 'month'
         ? t(language, 'Monatlich')
         : t(language, 'Täglich')
   );
   function x(index: number) {
-    return 50 + (index / Math.max(1, data.statistics.series.length - 1)) * 850;
+    return 50 + (index / Math.max(1, statistics.series.length - 1)) * 850;
   }
   function y(value: number) {
     return 255 - (value / maximum) * 210;
   }
   function tick(day: string) {
-    return data.statistics.granularity === 'year'
+    return statistics.granularity === 'year'
       ? day.slice(0, 4)
-      : data.statistics.granularity === 'month'
+      : statistics.granularity === 'month'
         ? day.slice(0, 7)
         : day.slice(5);
   }
@@ -48,13 +61,17 @@
 <div class="page-head">
   <div>
     <h1>{t(language, 'Statistik')}</h1>
-    <p>{data.statistics.startDate} – {data.statistics.endDate} · Europe/Berlin</p>
+    <p>{statistics.startDate} – {statistics.endDate} · Europe/Berlin</p>
   </div>
   <nav class="inline-form" aria-label={t(language, 'Zeitraum')}>
     {#each ranges as range}<a
         href={`/admin/statistics?range=${range.value}`}
-        class={data.statistics.range === range.value ? 'button' : 'button secondary'}
-        aria-current={data.statistics.range === range.value ? 'page' : undefined}
+        onclick={(event) => {
+          event.preventDefault();
+          changePeriod(range.value);
+        }}
+        class={statistics.range === range.value ? 'button' : 'button secondary'}
+        aria-current={statistics.range === range.value ? 'page' : undefined}
         >{t(language, range.label)}</a
       >{/each}
   </nav>
@@ -62,7 +79,7 @@
 <div class="grid" style="margin-bottom:1.5rem">
   {#each metrics as metric}<section class="card">
       <p class="eyebrow">{t(language, metric.label)}</p>
-      <div class="metric">{data.statistics.totals[metric.key]}</div>
+      <div class="metric">{statistics.totals[metric.key]}</div>
     </section>{/each}
 </div>
 <section class="card">
@@ -92,19 +109,19 @@
         /><text x="40" y={y(maximum * fraction) + 4} text-anchor="end"
           >{Number((maximum * fraction).toFixed(1))}</text
         >{/each}
-      {#each data.statistics.series as point, index}{#if index % Math.max(1, Math.ceil(data.statistics.series.length / 6)) === 0 || index === data.statistics.series.length - 1}<text
+      {#each statistics.series as point, index}{#if index % Math.max(1, Math.ceil(statistics.series.length / 6)) === 0 || index === statistics.series.length - 1}<text
             x={x(index)}
             y="279"
             text-anchor="middle">{tick(point.day)}</text
           >{/if}{/each}
       {#each visible as metric}<polyline
-          points={data.statistics.series
+          points={statistics.series
             .map((point, index) => `${x(index)},${y(point[metric.key])}`)
             .join(' ')}
           fill="none"
           stroke={metric.color}
           stroke-width="2.5"
-        />{#each data.statistics.series as point, index}<circle
+        />{#each statistics.series as point, index}<circle
             cx={x(index)}
             cy={y(point[metric.key])}
             r="2.6"
@@ -125,9 +142,8 @@
               >{/each}</tr
           ></thead
         ><tbody
-          >{#each data.statistics.series as point}<tr
-              ><th scope="row"
-                >{data.statistics.granularity === 'day' ? point.day : tick(point.day)}</th
+          >{#each statistics.series as point}<tr
+              ><th scope="row">{statistics.granularity === 'day' ? point.day : tick(point.day)}</th
               >{#each metrics as metric}<td>{point[metric.key]}</td>{/each}</tr
             >{/each}</tbody
         >

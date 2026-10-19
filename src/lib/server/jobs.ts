@@ -151,7 +151,7 @@ export async function getJobsSummary(actor: Actor) {
 
 export async function getJobs(
   actor: Actor,
-  options: { page?: number; state?: string; search?: string } = {}
+  options: { page?: number; state?: string; search?: string; paginate?: boolean } = {}
 ) {
   await requireAdmin(actor);
   const boss = await getBoss();
@@ -178,8 +178,8 @@ export async function getJobs(
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const latest = await client.query(
       `SELECT ${jobColumns} FROM "${schema}".job WHERE ${filter}
-       ORDER BY created_on DESC,id DESC LIMIT $4 OFFSET $5`,
-      [...values, pageSize, (page - 1) * pageSize]
+       ORDER BY created_on DESC,id DESC ${options.paginate === false ? '' : 'LIMIT $4 OFFSET $5'}`,
+      options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
     );
     return { total, page, pageSize, jobs: latest.rows.map(serializeJob) };
   });

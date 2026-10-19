@@ -1,0 +1,70 @@
+name: ppi-test
+x-app: &app
+  image: ppi:test
+  env_file:
+    - path: ./app.env
+      format: raw
+  restart: unless-stopped
+  init: true
+  security_opt: ['no-new-privileges:true']
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '3' }
+services:
+  db:
+    image: postgres:17-alpine
+    env_file: ./db.env
+    restart: unless-stopped
+    mem_limit: 512m
+    shm_size: 128m
+    volumes: ['./postgres:/var/lib/postgresql/data']
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U ppi -d ppi']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+  web:
+    <<: *app
+    build: ./source
+    ports: ['127.0.0.1:3000:3000']
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+    environment:
+      ADDRESS_HEADER: x-forwarded-for
+      XFF_DEPTH: 1
+    volumes: ['./files:/data/files']
+    depends_on:
+      db: { condition: service_healthy }
+  worker:
+    <<: *app
+    env_file:
+      - path: ./app.env
+        format: raw
+      - path: ./mail.env
+        format: raw
+    command: [node, --import, tsx, worker/index.ts]
+    mem_limit: 2g
+    cpus: 1
+    pids_limit: 128
+    stop_grace_period: 45s
+    volumes: ['./files:/data/files', './clamav:/var/lib/clamav:ro']
+    depends_on:
+      db: { condition: service_healthy }
+      mail: { condition: service_started }
+  mail:
+    image: axllent/mailpit:v1.29
+    restart: unless-stopped
+    mem_limit: 128m
+    ports: ['127.0.0.1:8025:8025']
+  signatures:
+    image: ppi:test
+    profiles: [tools]
+    restart: 'no'
+    entrypoint: [freshclam, --config-file=/app/deploy/freshclam.conf]
+    mem_limit: 512m
+    volumes: ['./clamav:/var/lib/clamav']

@@ -39,7 +39,6 @@ Source comparison on 19 October 2026 found these gaps. Confirm production requir
 - Unverified registrations and dedicated role/status filters in account administration.
 - Completion/anonymisation of account deletion after retention rules are agreed (`RecurringTasksSystem.php`, `RecurringTasksDao.php`). Submitted protocols must survive account removal.
 - A lecture-based ZIP filename and archive index with upload dates and examiners (`download.php`).
-- Help and support navigation (`help.php`, `Footer.php`).
 - Audit retention/export policy; do not copy the old log-pruning routine without deciding what must be retained.
 
 User notes and personalised download watermarks are implemented. Required zx administrator accounts, unrewarded improvements, immutable revisions and ledger-based token changes are intentional differences.

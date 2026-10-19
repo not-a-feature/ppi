@@ -282,10 +282,11 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('PostgreSQL authentication', () 
     const expiredToken = new URL(expiredMessage.match(/http:\/\/[^\s]+/)![0]).pathname
       .split('/')
       .at(-1)!;
-    await pool.query(
-      'UPDATE verification SET "expiresAt"=now()-interval \'1 second\' WHERE identifier=$1',
+    const expired = await pool.query(
+      'UPDATE verification SET "expiresAt"=\'2000-01-01T00:00:00Z\' WHERE identifier=$1',
       [`reset-password:${expiredToken}`]
     );
+    expect(expired.rowCount).toBe(1);
     await expect(
       auth.api.resetPassword({
         body: { token: expiredToken, newPassword: 'Replacement-password-2026!' }

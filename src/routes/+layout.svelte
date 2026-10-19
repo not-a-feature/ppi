@@ -19,7 +19,6 @@
       'Prüfungsprotokolle der Fachschaft Informatik Tübingen. Erfahrungen finden und eigene Protokolle teilen.'
     )}
   />
-  <link rel="icon" type="image/png" href="/brand/ppi-logo.png" />
 </svelte:head>
 <a href="#main" class="skip">{t(language, 'Zum Inhalt')}</a>
 <header class="site-header">
@@ -61,8 +60,14 @@
 </header>
 <main id="main">{@render children()}</main>
 <footer class="site-footer">
-  <span>{t(language, 'Fachschaft Informatik Tübingen')}</span>
-  <a href="/impressum">{t(language, 'Impressum')}</a>
+  <div class="footer-brand">
+    <span class="footer-logo" aria-hidden="true"></span>
+    <span>{t(language, 'Fachschaft Informatik Tübingen')}</span>
+  </div>
+  <nav class="footer-links" aria-label={t(language, 'Footer')}>
+    <a href="/impressum">{t(language, 'Impressum')}</a>
+    <a href="/faq">{t(language, 'Hilfe / FAQ')}</a>
+  </nav>
 </footer>
 
 <style>
@@ -151,14 +156,48 @@
     border-top: 1px solid var(--line);
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: 24px;
     color: var(--muted);
     font-size: 13px;
     line-height: 1.6;
   }
-  .site-footer span {
-    text-align: left;
+  .footer-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--brand);
+  }
+  .footer-logo {
+    display: block;
+    width: 120px;
+    aspect-ratio: 3 / 1;
+    background: currentColor;
+    mask: url('/brand/fsi-logo.png') center / contain no-repeat;
+    -webkit-mask: url('/brand/fsi-logo.png') center / contain no-repeat;
+  }
+  :global(:root[data-theme='dark']) .footer-brand {
+    color: white;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light']):not([data-theme='dark'])) .footer-brand {
+      color: white;
+    }
+  }
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .footer-links a {
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .footer-links a:hover,
+  .footer-links a:focus-visible {
+    color: var(--muted);
   }
   .skip {
     position: absolute;
@@ -223,11 +262,12 @@
       margin: 0 22px;
       padding: 22px 0;
       flex-direction: column;
+      align-items: flex-start;
       gap: 10px;
       font-size: 12px;
     }
-    .site-footer span {
-      text-align: left;
+    .footer-links {
+      align-items: flex-start;
     }
   }
 </style>

@@ -7,8 +7,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const q = (url.searchParams.get('q') ?? '').trim();
   const requestedPage = Number(url.searchParams.get('page') ?? 1);
   const state = url.searchParams.get('state') ?? '';
-  const jobs = await loadResult(() => getJobs(current, { page: requestedPage, state, search: q }));
-  return { jobs, q, state, page: jobs.page, pageSize: jobs.pageSize, total: jobs.total };
+  const jobs = await loadResult(() => getJobs(current, { paginate: false }));
+  return {
+    jobs,
+    q,
+    state,
+    page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+    pageSize: jobs.pageSize,
+    total: jobs.total
+  };
 };
 export const actions: Actions = {
   queue: async ({ locals, request }) => {

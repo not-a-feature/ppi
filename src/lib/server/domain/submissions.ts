@@ -285,6 +285,11 @@ async function appendRevision(
       input.remarks
     ]
   );
+  if (examinerId)
+    await client.query(
+      'INSERT INTO revision_examiner(revision_id,examiner_id,position) VALUES($1,$2,1)',
+      [revisionId, examinerId]
+    );
   for (const id of lectureIds)
     await client.query('INSERT INTO revision_lecture(revision_id,lecture_id) VALUES($1,$2)', [
       revisionId,
@@ -434,10 +439,11 @@ export async function getSubmission(actor: Actor, id: string) {
     );
     const revisions = (
       await client.query(
-        `SELECT r.*,f.original_name,f.safety_status,f.safety_detail,f.deleted_at file_deleted_at,e.name examiner_name,
+        `SELECT r.*,f.original_name,f.safety_status,f.safety_detail,f.deleted_at file_deleted_at,
+      (SELECT string_agg(e.name, ', ' ORDER BY re.position) FROM revision_examiner re JOIN examiner e ON e.id=re.examiner_id WHERE re.revision_id=r.id) examiner_name,
       ARRAY(SELECT lecture_id FROM revision_lecture WHERE revision_id=r.id) lecture_ids,
       ARRAY(SELECT zx FROM contributor_claim WHERE revision_id=r.id) collaborator_zx
-      FROM submission_revision r JOIN stored_file f ON f.id=r.file_id LEFT JOIN examiner e ON e.id=r.examiner_id WHERE r.submission_id=$1 ORDER BY r.revision_number DESC`,
+      FROM submission_revision r JOIN stored_file f ON f.id=r.file_id WHERE r.submission_id=$1 ORDER BY r.revision_number DESC`,
         [id]
       )
     ).rows;

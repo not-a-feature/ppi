@@ -7,18 +7,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const view = url.searchParams.get('view') === 'list' ? ('list' as const) : ('cards' as const);
   const requestedPage = Number(url.searchParams.get('page') ?? 1);
   const lecturesPage = await listLecturesPage(actor(locals), {
-    search: q,
-    onlyWithProtocols,
-    page:
-      Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= 1000000
-        ? requestedPage
-        : 1
+    paginate: false
   });
   return {
     lectures: lecturesPage.items,
     lecturesPage,
     q,
     onlyWithProtocols,
-    view
+    view,
+    page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
   };
 };

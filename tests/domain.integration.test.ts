@@ -135,6 +135,39 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     });
     expect(await domain.getActor(unverified.id)).toBeNull();
   });
+  it('loads the complete permitted catalogue for local filtering without exposing proposals', async () => {
+    const prefix = `Local catalogue ${randomUUID()}`;
+    await db.pool.query(
+      `INSERT INTO lecture(name,normalized_name,approval_status)
+      SELECT $1||n,$1||n,CASE WHEN n=42 THEN 'pending' ELSE 'approved' END FROM generate_series(1,42) n`,
+      [prefix]
+    );
+    const reader = await user();
+    const rows = (await domain.listLecturesPage(reader, { paginate: false })).items.filter((row) =>
+      row.name.startsWith(prefix)
+    );
+    expect(rows).toHaveLength(41);
+    expect(rows.some((row) => row.name === prefix + '41')).toBe(true);
+    expect(rows.some((row) => row.name === prefix + '42')).toBe(false);
+    const users = (await domain.listAdminUsersPage(admin, { paginate: false })).entries;
+    expect(users.some((row) => row.id === reader.id)).toBe(true);
+    await expect(domain.listAdminUsersPage(reader, { paginate: false })).rejects.toMatchObject({
+      code: 'admin_required'
+    });
+    await db.pool.query(
+      `INSERT INTO audit_event(action,entity_id) SELECT 'local-filter-fixture',$1||n FROM generate_series(1,41) n`,
+      [prefix]
+    );
+    expect(
+      (await listAdminEntries(admin, 'audit', { search: prefix, paginate: false })).entries
+    ).toHaveLength(41);
+    await expect(listAdminEntries(reader, 'audit', { paginate: false })).rejects.toMatchObject({
+      code: 'admin_required'
+    });
+    await expect(
+      domain.listLecturesPage(reader, { paginate: false, includeProposals: true })
+    ).rejects.toMatchObject({ code: 'admin_required' });
+  });
   it('uses current permissions instead of trusting a forged or stale actor', async () => {
     const student = await user();
     await expect(

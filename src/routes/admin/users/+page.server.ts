@@ -15,12 +15,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const q = (url.searchParams.get('q') ?? '').trim();
   const requestedPage = Number(url.searchParams.get('page') ?? 1);
   const result = await listAdminUsersPage(current, {
-    search: q,
-    page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
+    paginate: false
   });
   return {
     q,
     ...result,
+    page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
     requestKey: crypto.randomUUID()
   };
 };

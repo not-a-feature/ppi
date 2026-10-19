@@ -40,13 +40,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       }
     : await loadResult(() =>
         listLecturesPage(current, {
-          search: q,
-          page:
-            Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= 1000000
-              ? requestedPage
-              : 1,
           includeProposals: true,
-          approvalStatus
+          paginate: false
         })
       );
   const examiners = await listAdminLectureExaminers(
@@ -58,6 +53,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   );
   return {
     ...result,
+    page:
+      !submission && Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
     entries: result.items,
     lectureExaminers,
     q,
