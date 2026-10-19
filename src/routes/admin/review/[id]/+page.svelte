@@ -210,9 +210,11 @@
     <section class="card">
       <div class="split">
         <h2>{t(language, 'Datei und Prüfergebnis')}</h2>
-        <Status value={data.revision.safety_status} />
+        {#if data.revision.safety_status !== 'clean'}
+          <Status value={data.revision.safety_status} />
+        {/if}
       </div>
-      {#if data.revision.safety_detail}<p class="hint">
+      {#if data.revision.safety_status !== 'clean' && data.revision.safety_detail}<p class="hint">
           {feedbackText(language, data.revision.safety_detail)}
         </p>{/if}
       {#if data.revision.safety_status !== 'clean' || data.submission.files_deleted_at}<div
@@ -249,8 +251,8 @@
       {#if data.revision.remarks}<h3>{t(language, 'Anmerkungen')}</h3>
         <p>{data.revision.remarks}</p>{/if}
     </section>
-    <section class="card">
-      <h2>{t(language, 'Versionen und Entscheidungen')}</h2>
+    <details class="card" open={page.url.hash.startsWith('#revision-')}>
+      <summary>{t(language, 'Versionen und Entscheidungen')}</summary>
       {#each data.submission.revisions as revision}<details
           id="revision-{revision.id}"
           open={revision.id === data.revision.id || page.url.hash === `#revision-${revision.id}`}
@@ -258,7 +260,9 @@
           <summary
             >{t(language, 'Version')} {revision.revision_number}, {revision.original_name}</summary
           >
-          <p><Status value={revision.safety_status} /></p>
+          {#if revision.safety_status !== 'clean'}
+            <p><Status value={revision.safety_status} /></p>
+          {/if}
           {#if revision.safety_status === 'clean' && !data.submission.files_deleted_at}<a
               href="/files/{revision.id}">{t(language, 'Datei herunterladen')}</a
             >{/if}{#each revision.decisions as decision}<hr class="divider" />
@@ -285,7 +289,7 @@
             {#if reconsideration.resolution}<p>{reconsideration.resolution}</p>{/if}
           {/each}
         </details>{/each}
-    </section>
+    </details>
     {#if !data.submission.files_deleted_at}
       <details class="card">
         <summary>{t(language, 'Dateiprüfung erneut ausführen')}</summary>

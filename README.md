@@ -1,4 +1,4 @@
-# PPI-2
+# PPI 3
 
 A new PPI for sharing exam protocols, built with SvelteKit, TypeScript, PostgreSQL and Better Auth.
 
