@@ -3,7 +3,7 @@
   import { page } from '$app/state';
   import { untrack } from 'svelte';
   import { namedAction } from '$lib/form-actions';
-  import { text, type Language } from '$lib/i18n';
+  import { t, type Language } from '$lib/i18n';
 
   type Archive = {
     id: string;
@@ -86,29 +86,19 @@
 {#if submitting || (archive?.status === 'queued' && !pollError)}
   <div class="preparing" role="status" aria-live="polite">
     <span class="spinner" aria-hidden="true"></span>
-    {text(language, 'Vorbereiten…', 'Preparing…')}
+    {t(language, 'Vorbereiten…')}
   </div>
   <noscript
-    ><a href={page.url.pathname} data-sveltekit-reload
-      >{text(language, 'Aktualisieren', 'Refresh')}</a
-    ></noscript
+    ><a href={page.url.pathname} data-sveltekit-reload>{t(language, 'Aktualisieren')}</a></noscript
   >
 {:else if archive?.status === 'ready' && !pollError}
   <a class="button" href="/archives/{archive.id}/download" download>Download</a>
 {:else}
   {#if pollError}<p role="alert">
-      {text(
-        language,
-        'Status konnte nicht geladen werden. Bitte erneut versuchen.',
-        'Could not load the status. Please try again.'
-      )}
+      {t(language, 'Status konnte nicht geladen werden. Bitte erneut versuchen.')}
     </p>
   {:else if archive?.status === 'failed'}<p role="alert">
-      {text(
-        language,
-        'Download konnte nicht vorbereitet werden. Bitte erneut versuchen.',
-        'Could not prepare the download. Please try again.'
-      )}
+      {t(language, 'Download konnte nicht vorbereitet werden. Bitte erneut versuchen.')}
     </p>{/if}
   <form
     method="POST"

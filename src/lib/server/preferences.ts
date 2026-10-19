@@ -8,17 +8,6 @@ export type Preferences = {
 
 export const defaultPreferences: Preferences = { language: 'de', theme: 'auto' };
 
-export async function getPreferences(actor: Actor): Promise<Preferences> {
-  return transaction(async (client) => {
-    await currentActor(client, actor);
-    const result = await client.query<Preferences>(
-      'SELECT language,theme FROM user_preference WHERE user_id=$1',
-      [actor.id]
-    );
-    return result.rowCount ? result.rows[0] : { ...defaultPreferences };
-  });
-}
-
 export async function updatePreferences(
   actor: Actor,
   input: { language: string; theme: string }

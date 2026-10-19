@@ -3,7 +3,6 @@ export type { Actor } from './shared.js';
 export {
   getActor,
   activateAccount,
-  listAdminUsers,
   listAdminUsersPage,
   setUserNote,
   setAdmin,
@@ -11,7 +10,6 @@ export {
   requestAccountDeletion
 } from './accounts.js';
 export {
-  listLectures,
   listLecturesPage,
   getLecturesByIds,
   listAdminLectureExaminers,
@@ -25,14 +23,11 @@ export {
   decideLecture,
   listExaminers,
   createLecture,
-  createExaminer,
-  listPublishedProtocols,
   listPublishedProtocolsPage,
   getLecture,
   archiveLecture
 } from './catalogue.js';
 export {
-  getDashboard,
   getCreditsDashboard,
   listOwnSubmissionsPage,
   submitProtocol,
@@ -44,7 +39,6 @@ export {
 } from './submissions.js';
 export type { StoredFileInput, SubmissionInput } from './submissions.js';
 export {
-  listReviewQueue,
   listReviewQueuePage,
   getNextReview,
   decideSubmission,
@@ -58,19 +52,11 @@ export {
   getRewardPreview,
   purchaseLectureAccess,
   requestTokens,
-  listTokenRequests,
   resolveTokenRequest,
   adjustCredits,
   getPeriodicGrantPreview,
-  processPeriodicGrant,
-  runPeriodicGrant
+  processPeriodicGrant
 } from './credits.js';
 export type { PolicyInput } from './credits.js';
-export {
-  listAuditEvents,
-  reportContent,
-  listContentReports,
-  resolveContentReport,
-  requestReconsideration
-} from './reports.js';
+export { reportContent, resolveContentReport, requestReconsideration } from './reports.js';
 export type { ContentReportInput } from './reports.js';

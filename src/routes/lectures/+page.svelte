@@ -3,9 +3,10 @@
   import { afterNavigate, goto, replaceState } from '$app/navigation';
   import { page } from '$app/state';
   import Pagination from '$lib/components/Pagination.svelte';
-  import { text, protocolCountLabel } from '$lib/i18n';
+  import { t as translate, protocolCountLabel, type MessageKey } from '$lib/i18n';
   let { data } = $props();
-  const t = (de: string, en: string) => text(data.preferences.language, de, en);
+  const t = (key: MessageKey, values?: Record<string, string | number>) =>
+    translate(data.preferences.language, key, values);
   let query = $state(untrack(() => data.q));
   let onlyWithProtocols = $state(untrack(() => data.onlyWithProtocols));
   let view = $state<'cards' | 'list'>(untrack(() => data.view));
@@ -41,8 +42,8 @@
   onDestroy(() => clearTimeout(timer));
 </script>
 
-<div class="catalogue-heading"><h1>{t('Prüfungsprotokolle', 'Exam protocols')}</h1></div>
-<section aria-label={t('Veranstaltungskatalog', 'Course catalogue')}>
+<div class="catalogue-heading"><h1>{t('Prüfungsprotokolle')}</h1></div>
+<section aria-label={t('Veranstaltungskatalog')}>
   <form
     method="GET"
     role="search"
@@ -52,7 +53,7 @@
       searchNow();
     }}
   >
-    <label for="search">{t('Veranstaltung suchen', 'Find a course')}</label>
+    <label for="search">{t('Veranstaltung suchen')}</label>
     <div class="search-field">
       <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21"
         ><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg
@@ -61,7 +62,7 @@
         id="search"
         name="q"
         type="search"
-        placeholder={t('Name der Veranstaltung', 'Course name')}
+        placeholder={t('Name der Veranstaltung')}
         bind:value={query}
         oninput={scheduleSearch}
         maxlength="200"
@@ -70,7 +71,7 @@
     </div>
     {#if !onlyWithProtocols}<input type="hidden" name="files" value="all" />{/if}
     {#if view === 'list'}<input type="hidden" name="view" value="list" />{/if}
-    <noscript><button>{t('Suchen', 'Search')}</button></noscript>
+    <noscript><button>{t('Suchen')}</button></noscript>
   </form>
   <div class="catalogue-toolbar">
     <label class="protocol-filter"
@@ -81,9 +82,9 @@
           onlyWithProtocols = event.currentTarget.checked;
           searchNow();
         }}
-      />{t('Nur mit freigegebenen Protokollen', 'Only with accepted protocols')}</label
+      />{t('Nur mit freigegebenen Protokollen')}</label
     >
-    <div class="view-toggle" role="group" aria-label={t('Ansicht', 'View')}>
+    <div class="view-toggle" role="group" aria-label={t('Ansicht')}>
       <button type="button" aria-pressed={view === 'cards'} onclick={() => changeView('cards')}>
         <svg aria-hidden="true" viewBox="0 0 20 20" width="17" height="17"
           ><rect x="2" y="2" width="6" height="6" /><rect x="12" y="2" width="6" height="6" /><rect
@@ -92,23 +93,20 @@
             width="6"
             height="6"
           /><rect x="12" y="12" width="6" height="6" /></svg
-        >{t('Karten', 'Cards')}
+        >{t('Karten')}
       </button>
       <button type="button" aria-pressed={view === 'list'} onclick={() => changeView('list')}>
         <svg aria-hidden="true" viewBox="0 0 20 20" width="17" height="17"
           ><path d="M3 4h14M3 10h14M3 16h14" /></svg
-        >{t('Liste', 'List')}
+        >{t('Liste')}
       </button>
     </div>
   </div>
   <div class="results-heading">
-    <h2>{data.q ? t('Suchergebnisse', 'Search results') : t('Veranstaltungen', 'Courses')}</h2>
+    <h2>{data.q ? t('Suchergebnisse') : t('catalogue.courses')}</h2>
     <span aria-live="polite"
       >{data.lecturesPage.total}
-      {t(
-        data.lecturesPage.total === 1 ? 'Veranstaltung' : 'Veranstaltungen',
-        data.lecturesPage.total === 1 ? 'course' : 'courses'
-      )}</span
+      {t(data.lecturesPage.total === 1 ? 'catalogue.course' : 'catalogue.courseCount')}</span
     >
   </div>
   {#if data.lectures.length}
@@ -127,28 +125,28 @@
             {#if lecture.expires_at && new Date(lecture.expires_at) > new Date()}
               <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16"
                 ><path d="m3 10 4 4 10-10" /></svg
-              >{t('Freigeschaltet', 'Unlocked')}
-            {:else if lecture.archived}{t('Archiviert', 'Archived')}
-            {:else}{t('Nicht freigeschaltet', 'Not unlocked')}{/if}
+              >{t('Freigeschaltet')}
+            {:else if lecture.archived}{t('Archiviert')}
+            {:else}{t('Nicht freigeschaltet')}{/if}
           </span>
         </a>
       {/each}
     </div>
   {:else}
     <div class="catalogue-empty">
-      <h3>{t('Keine Veranstaltungen gefunden', 'No courses found')}</h3>
+      <h3>{t('Keine Veranstaltungen gefunden')}</h3>
       {#if onlyWithProtocols}<button
           class="secondary"
           onclick={() => {
             onlyWithProtocols = false;
             searchNow();
-          }}>{t('Auch ohne Protokolle anzeigen', 'Include courses without protocols')}</button
+          }}>{t('Auch ohne Protokolle anzeigen')}</button
         >{:else}<button
           class="secondary"
           onclick={() => {
             query = '';
             searchNow();
-          }}>{t('Suche zurücksetzen', 'Clear search')}</button
+          }}>{t('Suche zurücksetzen')}</button
         >{/if}
     </div>
   {/if}

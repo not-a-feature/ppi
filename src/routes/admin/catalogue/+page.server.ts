@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import {
   listLecturesPage,
   getSubmission,
@@ -72,7 +73,14 @@ export const actions: Actions = {
     const current = admin(locals),
       form = await request.formData();
     return actionResult(
-      () => createLecture(current, field(form, 'name')),
+      () =>
+        createLecture(current, field(form, 'name'), {
+          aliases: field(form, 'aliases')
+            .split(/\r?\n/)
+            .map((alias) => alias.trim())
+            .filter(Boolean),
+          examinerName: field(form, 'examinerName')
+        }),
       'Die Veranstaltung wurde angelegt.'
     );
   },
@@ -88,9 +96,7 @@ export const actions: Actions = {
             .map((alias) => alias.trim())
             .filter(Boolean)
         }),
-      locals.preferences.language === 'en'
-        ? 'Lecture updated.'
-        : 'Die Veranstaltung wurde aktualisiert.'
+      t(locals.preferences.language, 'Die Veranstaltung wurde aktualisiert.')
     );
   },
   decideLecture: async ({ locals, request }) => {
@@ -104,7 +110,7 @@ export const actions: Actions = {
           Number(field(form, 'version')),
           field(form, 'outcome') as 'approved' | 'rejected'
         ),
-      locals.preferences.language === 'en' ? 'Proposal reviewed.' : 'Der Vorschlag wurde geprüft.'
+      t(locals.preferences.language, 'Der Vorschlag wurde geprüft.')
     );
   },
   addExaminer: async ({ locals, request }) => {
@@ -112,9 +118,7 @@ export const actions: Actions = {
       form = await request.formData();
     return actionResult(
       () => addLectureExaminer(current, field(form, 'lectureId'), field(form, 'name')),
-      locals.preferences.language === 'en'
-        ? 'Examiner added to lecture.'
-        : 'Die prüfende Person wurde der Veranstaltung zugeordnet.'
+      t(locals.preferences.language, 'Die prüfende Person wurde der Veranstaltung zugeordnet.')
     );
   },
   renameExaminer: async ({ locals, request }) => {
@@ -128,9 +132,10 @@ export const actions: Actions = {
           field(form, 'examinerId'),
           field(form, 'name')
         ),
-      locals.preferences.language === 'en'
-        ? 'Examiner updated for this lecture.'
-        : 'Die prüfende Person wurde für diese Veranstaltung aktualisiert.'
+      t(
+        locals.preferences.language,
+        'Die prüfende Person wurde für diese Veranstaltung aktualisiert.'
+      )
     );
   },
   removeExaminer: async ({ locals, request }) => {
@@ -138,9 +143,7 @@ export const actions: Actions = {
       form = await request.formData();
     return actionResult(
       () => removeLectureExaminer(current, field(form, 'lectureId'), field(form, 'examinerId')),
-      locals.preferences.language === 'en'
-        ? 'Examiner link removed.'
-        : 'Die Zuordnung wurde entfernt.'
+      t(locals.preferences.language, 'Die Zuordnung wurde entfernt.')
     );
   },
   archive: async ({ locals, request }) => {

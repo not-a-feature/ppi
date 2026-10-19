@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, text, dateText } from '$lib/i18n';
+  import { t, dateText } from '$lib/i18n';
   import { page } from '$app/state';
   import Status from '$lib/components/Status.svelte';
   import Feedback from '$lib/components/Feedback.svelte';
@@ -26,7 +26,7 @@
   </div>
   <div class="actions">
     <span
-      >{text(language, 'Aktuelle Version', 'Current version')}
+      >{t(language, 'Aktuelle Version')}
       {data.submission.revisions[0].revision_number}: <Status
         value={data.submission.review_state}
       /></span
@@ -37,15 +37,11 @@
 <div class="narrow">
   <p class="hint">
     {#if publishedRevision}
-      {text(language, 'Version', 'Version')}
+      {t(language, 'submission.version')}
       {publishedRevision.revision_number}
-      {text(language, 'ist veröffentlicht.', 'is published.')}
+      {t(language, 'ist veröffentlicht.')}
     {:else}
-      {text(
-        language,
-        'Derzeit keine veröffentlichte Version.',
-        'No version is currently published.'
-      )}
+      {t(language, 'Derzeit keine veröffentlichte Version.')}
     {/if}
   </p>
   <section class="stack">
@@ -55,11 +51,10 @@
             {t(language, 'Version')}
             {revision.revision_number}
             {#if revision.id === publishedRevision?.id}<span class="badge good"
-                >{text(language, 'Veröffentlicht', 'Published')}</span
+                >{t(language, 'Veröffentlicht')}</span
               >{/if}
           </h2>
-          {#if revision.file_deleted_at}<span class="badge"
-              >{text(language, 'Datei gelöscht', 'File deleted')}</span
+          {#if revision.file_deleted_at}<span class="badge">{t(language, 'Datei gelöscht')}</span
             >{:else}<Status value={revision.safety_status} />{/if}
         </div>
         <p>{revision.original_name}</p>
@@ -79,23 +74,19 @@
             class="button secondary"
             href="/files/{revision.id}">{t(language, 'Eigene Datei herunterladen')}</a
           >{:else if !revision.file_deleted_at}<p class="hint">
-            {text(
-              language,
-              'Download nach erfolgreicher Dateiprüfung verfügbar.',
-              'Download available after the file check passes.'
-            )}
+            {t(language, 'Download nach erfolgreicher Dateiprüfung verfügbar.')}
           </p>{/if}{#each revision.decisions as decision}<hr class="divider" />
           <Status value={decision.outcome} />{#if decision.public_feedback}<p>
               {decision.public_feedback}
             </p>{/if}{/each}
         {#each revision.reconsiderations as reconsideration}
           <hr class="divider" />
-          <h3>{text(language, 'Erneute Prüfung', 'Reconsideration')}</h3>
+          <h3>{t(language, 'Erneute Prüfung')}</h3>
           <p>{reconsideration.explanation}</p>
           <p class="hint">
             {reconsideration.status === 'open'
-              ? text(language, 'Offen', 'Open')
-              : text(language, 'Abgeschlossen', 'Resolved')}
+              ? t(language, 'Offen')
+              : t(language, 'report.resolved')}
           </p>
           {#if reconsideration.resolution}<p>{reconsideration.resolution}</p>{/if}
         {/each}
@@ -123,13 +114,7 @@
     style="margin-top:3rem"
     open={Boolean(form?.values)}
   >
-    <summary
-      >{text(
-        language,
-        'Optional: Verbesserung einreichen',
-        'Optional: submit an improvement'
-      )}</summary
-    >
+    <summary>{t(language, 'Optional: Verbesserung einreichen')}</summary>
     <ProtocolForm
       lectures={data.lectures}
       examiners={data.examiners}

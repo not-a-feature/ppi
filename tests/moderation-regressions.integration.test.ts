@@ -322,7 +322,8 @@ describe.skipIf(!testUrl)('moderation regression transactions and actions', () =
       'processing'
     );
     expect(await domain.getDownload(student, submitted.revisionId)).toMatchObject({
-      originalName: 'regression.txt'
+      fileId: submitted.fileId,
+      generation: 2
     });
     const jobs = (
       await db.pool.query('SELECT payload FROM core_job WHERE business_key=$1', [

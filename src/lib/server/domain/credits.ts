@@ -285,17 +285,6 @@ export async function requestTokens(actor: Actor, explanation: string) {
   });
 }
 
-export async function listTokenRequests(actor: Actor) {
-  return transaction(async (client) => {
-    await currentActor(client, actor, true);
-    return (
-      await client.query(
-        'SELECT t.*,u.email FROM token_request t JOIN "user" u ON u.id=t.user_id ORDER BY t.created_at DESC LIMIT 100'
-      )
-    ).rows;
-  });
-}
-
 export async function resolveTokenRequest(
   actor: Actor,
   id: string,
@@ -466,15 +455,4 @@ export async function processPeriodicGrant(period: string, batchSize = 250) {
     ).rows[0].n;
     return { period, processed: users.length, remaining, amount: run.amount };
   });
-}
-
-export async function runPeriodicGrant(actor: Actor, period: string) {
-  bounded(period, 100);
-  await transaction(async (client) => {
-    await currentActor(client, actor, true);
-    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`grant:${period}`]);
-    await initialiseGrant(client, period);
-    await audit(client, actor.id, 'grant.started', period);
-  });
-  return processPeriodicGrant(period);
 }

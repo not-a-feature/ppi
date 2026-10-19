@@ -5,17 +5,18 @@
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
   import { namedAction } from '$lib/form-actions';
-  import { text } from '$lib/i18n';
+  import { t as translate, type MessageKey } from '$lib/i18n';
   import { termLabel } from '$lib/terms';
   let { data, form } = $props();
-  const t = (de: string, en: string) => text(data.preferences.language, de, en);
+  const t = (key: MessageKey, values?: Record<string, string | number>) =>
+    translate(data.preferences.language, key, values);
   const date = (value: string | Date) =>
     new Date(value).toLocaleDateString(data.preferences.language === 'de' ? 'de-DE' : 'en-GB');
   let active = $derived(data.lecture.expires_at && new Date(data.lecture.expires_at) > new Date());
   let purchasing = $state(false);
 </script>
 
-<a class="back-link" href="/lectures">{t('Alle Veranstaltungen', 'All courses')}</a>
+<a class="back-link" href="/lectures">{t('catalogue.all')}</a>
 <div class="lecture-heading">
   <h1>{data.lecture.name}</h1>
   <div class="lecture-summary">
@@ -24,55 +25,49 @@
       {t(
         data.lecture.protocolsPage.total === 1
           ? 'veröffentlichtes Prüfungsprotokoll'
-          : 'veröffentlichte Prüfungsprotokolle',
-        data.lecture.protocolsPage.total === 1
-          ? 'published exam protocol'
-          : 'published exam protocols'
+          : 'veröffentlichte Prüfungsprotokolle'
       )}
     </p>
-    {#if data.lecture.archived}<span>{t('Archivierte Veranstaltung', 'Archived course')}</span>{/if}
+    {#if data.lecture.archived}<span>{t('Archivierte Veranstaltung')}</span>{/if}
   </div>
 </div>
 <Feedback {form} />
 
 <div class="lecture-layout">
-  <section class="protocols-section" aria-label={t('Prüfungsprotokolle', 'Exam protocols')}>
+  <section class="protocols-section" aria-label={t('Prüfungsprotokolle')}>
     {#each data.lecture.protocols as protocol}
       <article class="protocol-entry">
         <div class="protocol-title">
           <h3>
-            {protocol.examiner || t('Prüfende Person nicht angegeben', 'Examiner not specified')}
+            {protocol.examiner || t('Prüfende Person nicht angegeben')}
           </h3>
-          <span>{t('Geprüft', 'Reviewed')}</span>
+          <span>{t('Geprüft')}</span>
         </div>
         <dl>
           <div>
-            <dt>{t('Semester', 'Term')}</dt>
+            <dt>{t('Semester')}</dt>
             <dd>{termLabel(data.preferences.language, protocol.term)}</dd>
           </div>
           <div>
-            <dt>{t('Prüfungsdatum', 'Exam date')}</dt>
+            <dt>{t('Prüfungsdatum')}</dt>
             <dd>
-              {protocol.exam_date
-                ? date(protocol.exam_date)
-                : t('Nicht angegeben', 'Not specified')}
+              {protocol.exam_date ? date(protocol.exam_date) : t('Nicht angegeben')}
             </dd>
           </div>
           {#if protocol.lectures.length > 1}<div class="lecture-assignments">
-              <dt>{t('Veranstaltungen', 'Courses')}</dt>
+              <dt>{t('catalogue.courses')}</dt>
               <dd>{protocol.lectures.join(', ')}</dd>
             </div>{/if}
         </dl>
         {#if protocol.has_access}<a
             class="button secondary download-button"
-            href="/files/{protocol.revision_id}"
-            >{t('Protokoll herunterladen', 'Download protocol')}</a
+            href="/files/{protocol.revision_id}">{t('Protokoll herunterladen')}</a
           >{/if}
       </article>
     {:else}
       <div class="no-protocols">
-        <h3>{t('Noch keine Protokolle', 'No protocols yet')}</h3>
-        <a class="button secondary" href="/upload">{t('Protokoll hochladen', 'Upload protocol')}</a>
+        <h3>{t('Noch keine Protokolle')}</h3>
+        <a class="button secondary" href="/upload">{t('Protokoll hochladen')}</a>
       </div>
     {/each}
 
@@ -85,11 +80,11 @@
 
   <aside class="access-column" aria-labelledby="access-heading">
     <section id="course-access" class="access-panel">
-      <h2 id="access-heading">{t('Dein Zugang', 'Your access')}</h2>
+      <h2 id="access-heading">{t('Dein Zugang')}</h2>
       {#if active}
-        <p class="access-active">{t('Freigeschaltet', 'Unlocked')}</p>
+        <p class="access-active">{t('Freigeschaltet')}</p>
         <p class="access-expiry">
-          {t('Gültig bis', 'Valid until')}
+          {t('Gültig bis')}
           {date(data.lecture.expires_at!)}.
         </p>
         {#if data.lecture.protocolsPage.total}<div class="archive-option">
@@ -100,18 +95,12 @@
       {:else}
         <p class="access-price">
           <strong>{data.lecture.policy.lecture_cost}</strong>
-          {t(
-            data.lecture.policy.lecture_cost === 1 ? 'Token' : 'Tokens',
-            data.lecture.policy.lecture_cost === 1 ? 'token' : 'tokens'
-          )}
+          {t(data.lecture.policy.lecture_cost === 1 ? 'tokenCount.one' : 'tokenCount.many')}
         </p>
         <p class="access-copy">
-          {t(
-            'Zugang zu allen veröffentlichten Protokollen dieser Veranstaltung für',
-            'Access to all published protocols for this course for'
-          )}
+          {t('Zugang zu allen veröffentlichten Protokollen dieser Veranstaltung für')}
           {data.lecture.policy.access_weeks}
-          {t('Wochen.', 'weeks.')}
+          {t('Wochen.')}
         </p>
         {#if !data.lecture.archived}<form
             method="POST"
@@ -129,32 +118,22 @@
           >
             <input type="hidden" name="requestKey" value={data.requestKey} /><button
               disabled={purchasing}
-              >{purchasing
-                ? t('Freischalten…', 'Unlocking…')
-                : t('Zugang freischalten', 'Unlock access')}</button
+              >{purchasing ? t('Freischalten…') : t('Zugang freischalten')}</button
             >
           </form>{:else}<p class="archive-note">
-            {t(
-              'Für archivierte Veranstaltungen kann kein neuer Zugang erworben werden.',
-              'New access cannot be purchased for archived courses.'
-            )}
+            {t('Für archivierte Veranstaltungen kann kein neuer Zugang erworben werden.')}
           </p>{/if}
       {/if}
     </section>
     <details class="report-panel">
-      <summary
-        >{t(
-          'Fehler oder problematischen Inhalt melden',
-          'Report incorrect information or problematic content'
-        )}</summary
-      >
+      <summary>{t('Fehler oder problematischen Inhalt melden')}</summary>
       <form method="POST" action={namedAction(page.url, 'report')}>
         <input type="hidden" name="requestKey" value={'report:' + data.requestKey} />
         <label
-          >{t('Betroffener Eintrag', 'Affected entry')}<select name="submissionId"
-            ><option value="">{t('Veranstaltung allgemein', 'Course in general')}</option
+          >{t('Betroffener Eintrag')}<select name="submissionId"
+            ><option value="">{t('Veranstaltung allgemein')}</option
             >{#each data.lecture.protocols as protocol}<option value={protocol.id}
-                >{protocol.examiner || t('Prüfungsprotokoll', 'Exam protocol')} ({termLabel(
+                >{protocol.examiner || t('Prüfungsprotokoll')} ({termLabel(
                   data.preferences.language,
                   protocol.term
                 )})</option
@@ -162,22 +141,19 @@
           ></label
         >
         <label
-          >{t('Art des Problems', 'Type of problem')}<select name="category"
-            ><option value="metadata">{t('Fehlerhafte Angaben', 'Incorrect information')}</option
-            ><option value="inappropriate"
-              >{t('Unangemessener Inhalt', 'Inappropriate content')}</option
-            ><option value="unavailable">{t('Datei nicht verfügbar', 'File unavailable')}</option
-            ><option value="other">{t('Sonstiges', 'Other')}</option></select
+          >{t('Art des Problems')}<select name="category"
+            ><option value="metadata">{t('Fehlerhafte Angaben')}</option><option
+              value="inappropriate">{t('Unangemessener Inhalt')}</option
+            ><option value="unavailable">{t('Datei nicht verfügbar')}</option><option value="other"
+              >{t('Sonstiges')}</option
+            ></select
           ></label
         >
         <label
-          >{t('Beschreibung', 'Description')}<textarea
-            name="explanation"
-            required
-            minlength="10"
-            maxlength="2000"></textarea></label
+          >{t('Beschreibung')}<textarea name="explanation" required minlength="10" maxlength="2000"
+          ></textarea></label
         >
-        <button class="secondary">{t('Meldung einreichen', 'Submit report')}</button>
+        <button class="secondary">{t('Meldung einreichen')}</button>
       </form>
     </details>
   </aside>

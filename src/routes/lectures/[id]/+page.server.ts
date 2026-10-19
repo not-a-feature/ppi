@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { fail } from '@sveltejs/kit';
 import { getLectureArchive, requestArchive } from '$lib/server/archives';
 import { getLecture, purchaseLectureAccess, reportContent, DomainError } from '$lib/server/domain';
@@ -36,7 +37,7 @@ export const actions: Actions = {
       form = await request.formData();
     const purchase = await actionResult(
       () => purchaseLectureAccess(current, params.id, field(form, 'requestKey')),
-      locals.preferences.language === 'en' ? 'Access unlocked.' : 'Zugang freigeschaltet.'
+      t(locals.preferences.language, 'Zugang freigeschaltet.')
     );
     if ('status' in purchase) return purchase;
     try {

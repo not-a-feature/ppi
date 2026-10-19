@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-  import { text } from '$lib/i18n';
+  import { t, type MessageKey } from '$lib/i18n';
   let { src, language }: { src: string; language: 'de' | 'en' } = $props();
-  const tr = (de: string, en: string) => text(language, de, en);
+  const tr = (key: MessageKey, values?: Record<string, string | number>) =>
+    t(language, key, values);
   let pdf = $state.raw<PDFDocumentProxy>();
   let plainText = $state<string>();
   let pageNumber = $state(1);
@@ -86,7 +87,7 @@
       canvas.style.height = 'auto';
       canvas.style.display = 'block';
       canvas.setAttribute('role', 'img');
-      canvas.setAttribute('aria-label', `${tr('Seite', 'Page')} ${number}`);
+      canvas.setAttribute('aria-label', `${tr('Seite')} ${number}`);
       task = page.render({ canvas, viewport, transform: [pixelRatio, 0, 0, pixelRatio, 0, 0] });
       await task.promise;
       const content = await page.getTextContent();
@@ -111,40 +112,34 @@
 </script>
 
 {#if loading}<p class="preview-message" role="status">
-    {tr('Vorschau wird geladen …', 'Loading preview …')}
+    {tr('Vorschau wird geladen …')}
   </p>{/if}
 {#if failed}<p class="preview-message notice warning" role="alert">
     {passwordRequired
-      ? tr(
-          'Passwortgeschütztes PDF. Bitte die Datei herunterladen.',
-          'Password-protected PDF. Please download the file.'
-        )
-      : tr(
-          'Die Vorschau konnte nicht geladen werden. Bitte die Datei herunterladen.',
-          'The preview could not be loaded. Please download the file.'
-        )}
+      ? tr('Passwortgeschütztes PDF. Bitte die Datei herunterladen.')
+      : tr('Die Vorschau konnte nicht geladen werden. Bitte die Datei herunterladen.')}
   </p>{/if}
 {#if plainText !== undefined}<pre class="text-preview">{plainText}</pre>{/if}
 {#if pdf}
-  <div class="preview-toolbar" aria-label={tr('PDF-Steuerung', 'PDF controls')}>
+  <div class="preview-toolbar" aria-label={tr('PDF-Steuerung')}>
     <button
       type="button"
       class="secondary"
       disabled={pageNumber === 1 || rendering}
       onclick={() => pageNumber--}
-      aria-label={tr('Vorherige Seite', 'Previous page')}>←</button
+      aria-label={tr('Vorherige Seite')}>←</button
     >
-    <span aria-live="polite">{tr('Seite', 'Page')} {pageNumber} / {pdf.numPages}</span>
+    <span aria-live="polite">{tr('Seite')} {pageNumber} / {pdf.numPages}</span>
     <button
       type="button"
       class="secondary"
       disabled={pageNumber === pdf.numPages || rendering}
       onclick={() => pageNumber++}
-      aria-label={tr('Nächste Seite', 'Next page')}>→</button
+      aria-label={tr('Nächste Seite')}>→</button
     >
     <label
-      >{tr('Zoom', 'Zoom')}<select bind:value={zoom}>
-        <option value={1}>{tr('Seitenbreite', 'Page width')}</option>
+      >{tr('Zoom')}<select bind:value={zoom}>
+        <option value={1}>{tr('Seitenbreite')}</option>
         <option value={1.25}>125%</option><option value={1.5}>150%</option><option value={2}
           >200%</option
         >
@@ -160,7 +155,7 @@
     ></div>
   </div>
   {#if pageText}<details class="page-text">
-      <summary>{tr('Seitentext', 'Page text')}</summary>
+      <summary>{tr('Seitentext')}</summary>
       <pre>{pageText}</pre>
     </details>{/if}
 {/if}

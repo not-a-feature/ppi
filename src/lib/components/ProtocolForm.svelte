@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { page } from '$app/state';
-  import { text } from '$lib/i18n';
+  import { t, type MessageKey } from '$lib/i18n';
   import { termLabel, termOptions } from '$lib/terms';
   import { MAX_FILE_BYTES } from '$lib/file-limits';
   import CourseSelector, {
@@ -32,7 +32,8 @@
     values?: FormValues;
   } = $props();
   let language = $derived(page.data.preferences.language);
-  const tr = (de: string, en: string) => text(language, de, en);
+  const tr = (key: MessageKey, values?: Record<string, string | number>) =>
+    t(language, key, values);
   function initialSlots(initial: FormValues) {
     const ids = [...new Set(initial.lectureIds ?? [])];
     const names = [
@@ -75,18 +76,11 @@
     if (files && files.length) {
       const file = files[0];
       fileName = file.name;
-      if (files.length !== 1)
-        fileError = tr('Bitte genau eine Datei auswählen.', 'Select exactly one file.');
+      if (files.length !== 1) fileError = tr('Bitte genau eine Datei auswählen.');
       else if (!/\.(pdf|txt)$/i.test(file.name))
-        fileError = tr(
-          'Nur PDF- und TXT-Dateien sind erlaubt.',
-          'Only PDF and TXT files are allowed.'
-        );
+        fileError = tr('Nur PDF- und TXT-Dateien sind erlaubt.');
       else if (file.size === 0 || file.size > MAX_FILE_BYTES)
-        fileError = tr(
-          'Die Datei muss Inhalt haben und darf höchstens 30 MiB groß sein.',
-          'The file must not be empty and must be no larger than 30 MiB.'
-        );
+        fileError = tr('Die Datei muss Inhalt haben und darf höchstens 30 MiB groß sein.');
     }
     if (fileError) {
       fileInput.value = '';
@@ -115,7 +109,7 @@
     if (files.length !== 1) {
       fileInput.value = '';
       fileName = '';
-      fileError = tr('Bitte genau eine Datei ablegen.', 'Drop exactly one file.');
+      fileError = tr('Bitte genau eine Datei ablegen.');
       fileInput.setCustomValidity(fileError);
       return;
     }
@@ -132,23 +126,15 @@
 >
   <input type="hidden" name="requestKey" value={requestKey} />
   <section class="card">
-    <h2>{tr('1. Protokoll', '1. Protocol')}</h2>
-    <nav
-      class="template-downloads"
-      aria-label={tr('Protokollvorlagen herunterladen', 'Download protocol templates')}
-    >
-      <span>{tr('Vorlagen:', 'Templates (German):')}</span>
+    <h2>{tr('1. Protokoll')}</h2>
+    <nav class="template-downloads" aria-label={tr('Protokollvorlagen herunterladen')}>
+      <span>{tr('Vorlagen:')}</span>
       <a href="/templates/protokoll-vorlage.tex" download>LaTeX (.tex)</a>
       <a href="/templates/protokoll-vorlage.docx" download>Word (.docx)</a>
-      <a href="/templates/protokoll-vorlage.txt" download
-        >{tr('Text (.txt)', 'Plain text (.txt)')}</a
-      >
+      <a href="/templates/protokoll-vorlage.txt" download>{tr('Text (.txt)')}</a>
     </nav>
     <p class="hint">
-      {tr(
-        'Word und LaTeX als PDF exportieren. TXT direkt hochladen.',
-        'Export Word and LaTeX to PDF. Upload TXT directly.'
-      )}
+      {tr('Word und LaTeX als PDF exportieren. TXT direkt hochladen.')}
     </p>
     <div
       class="protocol-drop"
@@ -163,8 +149,8 @@
     >
       <label id="file-label" for="file"
         >{improvement
-          ? tr('Verbesserte Datei ablegen oder auswählen', 'Drop or select the improved file')
-          : tr('Datei ablegen oder auswählen', 'Drop or select a file')}</label
+          ? tr('Verbesserte Datei ablegen oder auswählen')
+          : tr('Datei ablegen oder auswählen')}</label
       >
       <input
         bind:this={fileInput}
@@ -178,10 +164,7 @@
         onchange={validateFile}
       />
       <p id="file-limit">
-        {tr(
-          'Eine PDF- oder TXT-Datei, höchstens 30 MiB.',
-          'One PDF or TXT file, no larger than 30 MiB.'
-        )}
+        {tr('Eine PDF- oder TXT-Datei, höchstens 30 MiB.')}
       </p>
       {#if fileName}<p class="selected-file">{fileName}</p>{/if}
       {#if fileError}<p id="file-error" class="file-error" role="alert">{fileError}</p>{/if}
@@ -189,18 +172,17 @@
   </section>
 
   <section class="card">
-    <h2>{tr('2. Angaben zur Prüfung', '2. Exam details')}</h2>
+    <h2>{tr('2. Angaben zur Prüfung')}</h2>
     <fieldset class="lecture-fields">
-      <legend>{tr('Vorlesung', 'Course')}</legend>
+      <legend>{tr('Vorlesung')}</legend>
       {#each slots as slot, index (slot.key)}
         <div class="lecture-slot">
           {#if slots.length > 1}<div class="slot-heading">
-              <span>{tr('Vorlesung ', 'Course ')}{index + 1}</span><button
+              <span>{tr('Vorlesung ')}{index + 1}</span><button
                 type="button"
                 class="remove-course"
                 onclick={() => (slots = slots.filter((item) => item.key !== slot.key))}
-                aria-label={tr('Vorlesung entfernen: ', 'Remove course: ') + (index + 1)}
-                >{tr('Entfernen', 'Remove')}</button
+                aria-label={tr('Vorlesung entfernen: ') + (index + 1)}>{tr('Entfernen')}</button
               >
             </div>{/if}
           <CourseSelector
@@ -218,16 +200,13 @@
           class="add-course"
           onclick={() =>
             (slots = [...slots, { key: nextKey++, value: { lectureId: '', newLectureName: '' } }])}
-          ><span aria-hidden="true">+</span>{tr(
-            'Prüfung über mehrere Vorlesungen',
-            'Exam covering multiple courses'
-          )}</button
+          ><span aria-hidden="true">+</span>{tr('Prüfung über mehrere Vorlesungen')}</button
         >{/if}
     </fieldset>
 
     <div class="exam-fields">
       <label for="examinerName"
-        >{tr('Prüfende Person', 'Examiner')}
+        >{tr('Prüfende Person')}
         <input
           id="examinerName"
           name="examinerName"
@@ -244,9 +223,8 @@
         ></label
       >
       <label for="term"
-        >{tr('Semester', 'Term')}<select id="term" name="term" required
-          ><option value="">{tr('Semester auswählen', 'Select a term')}</option
-          >{#each semesters as semester}<option
+        >{tr('Semester')}<select id="term" name="term" required
+          ><option value="">{tr('Semester auswählen')}</option>{#each semesters as semester}<option
               value={semester.value}
               selected={values.term === semester.value}
               >{termLabel(language, semester.value)}</option
@@ -255,7 +233,7 @@
       >
     </div>
     {#if !improvement}<label for="examDate"
-        >{tr('Prüfungsdatum', 'Exam date')}
+        >{tr('Prüfungsdatum')}
         <input
           id="examDate"
           name="examDate"
@@ -265,16 +243,16 @@
         /></label
       >{/if}
     <label for="remarks"
-      >{tr('Anmerkungen', 'Comments')}
-      <span class="optional">{tr('(optional)', '(optional)')}</span><textarea
+      >{tr('submission.comments')}
+      <span class="optional">{tr('(optional)')}</span><textarea
         id="remarks"
         name="remarks"
         maxlength="2000"
         value={values.remarks ?? ''}></textarea></label
     >
     {#if !improvement}<label for="collaboratorZx"
-        >{tr('Weitere Mitwirkende', 'Other contributors')}
-        <span class="optional">{tr('(optional)', '(optional)')}</span><input
+        >{tr('Weitere Mitwirkende')}
+        <span class="optional">{tr('(optional)')}</span><input
           id="collaboratorZx"
           name="collaboratorZx"
           placeholder="zxabc12, zxdef34"
@@ -284,28 +262,23 @@
   </section>
 
   <section class="card">
-    <h2>{tr('3. Einreichung bestätigen', '3. Confirm submission')}</h2>
+    <h2>{tr('3. Einreichung bestätigen')}</h2>
     <p class="submission-policy">
       {improvement
         ? tr(
-            'Die Verbesserung wird neu geprüft und erhält keine weiteren Tokens. Die bisherige Version bleibt erhalten.',
-            'The improvement will be reviewed and receives no additional tokens. The previous version is retained.'
+            'Die Verbesserung wird neu geprüft und erhält keine weiteren Tokens. Die bisherige Version bleibt erhalten.'
           )
         : tr(
-            'Du kannst später Verbesserungen hochladen. Eingereichte Protokolle kannst du nicht selbst löschen oder zurückziehen.',
-            'You can upload improvements later. You cannot delete or withdraw submitted protocols yourself.'
+            'Du kannst später Verbesserungen hochladen. Eingereichte Protokolle kannst du nicht selbst löschen oder zurückziehen.'
           )}
     </p>
     <label class="attestation"
       ><input type="checkbox" name="attested" required />{tr(
-        'Ich habe an diesem Protokoll mitgewirkt und darf es teilen.',
-        'I contributed to this protocol and have permission to share it.'
+        'Ich habe an diesem Protokoll mitgewirkt und darf es teilen.'
       )}</label
     >
     <button disabled={Boolean(fileError)}
-      >{improvement
-        ? tr('Verbesserung hochladen', 'Upload improvement')
-        : tr('Protokoll hochladen', 'Upload protocol')}</button
+      >{improvement ? tr('Verbesserung hochladen') : tr('Protokoll hochladen')}</button
     >
   </section>
 </form>

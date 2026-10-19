@@ -235,7 +235,7 @@ describe.skipIf(!fixtures)('real OCR and personal PDF delivery', () => {
     ).rejects.toMatchObject({ status: 409 });
     const current = (await domain.listAdminUsersPage(admin, { search: student.email })).entries[0];
     expect(current.admin_note).toBe('Private synthetic note');
-    expect(JSON.stringify(await domain.getDashboard(student))).not.toContain(
+    expect(JSON.stringify(await domain.getCreditsDashboard(student))).not.toContain(
       'Private synthetic note'
     );
     expect(

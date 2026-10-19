@@ -102,29 +102,6 @@ export async function listOwnSubmissionsPage(actor: Actor, requestedPage = 1) {
   });
 }
 
-export async function getDashboard(actor: Actor, requestedLedgerPage = 1) {
-  return transaction(async (client) => {
-    await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-    await currentActor(client, actor);
-    const credits = await creditsDashboard(client, actor, requestedLedgerPage);
-    const submissions = (
-      await client.query(
-        `SELECT s.*,r.revision_number,f.original_name,f.safety_status FROM submission s
-         JOIN submission_revision r ON r.id=s.current_revision_id JOIN stored_file f ON f.id=r.file_id
-         WHERE s.uploader_id=$1 ORDER BY s.created_at DESC,s.id DESC`,
-        [actor.id]
-      )
-    ).rows;
-    const notifications = (
-      await client.query(
-        'SELECT * FROM notification WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50',
-        [actor.id]
-      )
-    ).rows;
-    return { ...credits, submissions, notifications };
-  });
-}
-
 export type StoredFileInput = {
   storageKey: string;
   sha256: string;
@@ -281,14 +258,17 @@ async function appendRevision(
   ]);
   await checkUploadLimits(client, actor.id, input.file.byteCount);
   await client.query(
-    `INSERT INTO stored_file(id,storage_key,sha256,byte_count,media_type,original_name) VALUES($1,$2,$3,$4,$5,$6)`,
+    `INSERT INTO stored_file(id,storage_key,sha256,byte_count,media_type,original_name)
+     VALUES($1,$2,$3,$4,$5,concat(replace($6::text,'/','-'),'_',coalesce($7::date::text,'undated'),'_',
+       nextval('protocol_file_number'),CASE WHEN $5='application/pdf' THEN '.pdf' ELSE '.txt' END))`,
     [
       fileId,
       input.file.storageKey,
       input.file.sha256,
       input.file.byteCount,
       input.file.mediaType,
-      input.file.originalName
+      input.term,
+      input.examDate ?? null
     ]
   );
   await client.query(

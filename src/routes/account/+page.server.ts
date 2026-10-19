@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { redirect, fail } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '$lib/server/auth';
@@ -19,17 +20,17 @@ export const actions: Actions = {
         theme: field(form, 'theme')
       });
       return {
-        message:
-          locals.preferences.language === 'en' ? 'Preferences saved.' : 'Einstellungen gespeichert.'
+        message: t(locals.preferences.language, 'Einstellungen gespeichert.')
       };
     } catch (cause) {
       if (cause instanceof DomainError)
         return fail(cause.status, {
           error:
             cause.code === 'invalid_preferences'
-              ? locals.preferences.language === 'en'
-                ? 'Please choose a valid language and appearance.'
-                : 'Bitte eine gültige Sprache und Darstellung auswählen.'
+              ? t(
+                  locals.preferences.language,
+                  'Bitte eine gültige Sprache und Darstellung auswählen.'
+                )
               : errorMessage(cause)
         });
       throw cause;

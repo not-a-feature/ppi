@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, text } from '$lib/i18n';
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   import Feedback from '$lib/components/Feedback.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
@@ -17,12 +17,12 @@
 </div>
 <Feedback {form} />
 <section class="card narrow" style="margin-bottom:2rem">
-  <h2>{text(language, 'Sprache und Darstellung', 'Language and appearance')}</h2>
+  <h2>{t(language, 'Sprache und Darstellung')}</h2>
 
   <form method="POST" action="?/preferences">
     <div class="grid">
       <label for="language"
-        >{text(language, 'Sprache', 'Language')}<select id="language" name="language"
+        >{t(language, 'Sprache')}<select id="language" name="language"
           ><option value="de" selected={data.preferences.language === 'de'}>Deutsch</option><option
             value="en"
             selected={data.preferences.language === 'en'}>English</option
@@ -30,18 +30,18 @@
         ></label
       >
       <label for="theme"
-        >{text(language, 'Darstellung', 'Appearance')}<select id="theme" name="theme"
+        >{t(language, 'Darstellung')}<select id="theme" name="theme"
           ><option value="auto" selected={data.preferences.theme === 'auto'}
-            >{text(language, 'Systemeinstellung', 'System preference')}</option
+            >{t(language, 'Systemeinstellung')}</option
           ><option value="light" selected={data.preferences.theme === 'light'}
-            >{text(language, 'Hell', 'Light')}</option
+            >{t(language, 'Hell')}</option
           ><option value="dark" selected={data.preferences.theme === 'dark'}
-            >{text(language, 'Dunkel', 'Dark')}</option
+            >{t(language, 'Dunkel')}</option
           ></select
         ></label
       >
     </div>
-    <button>{text(language, 'Einstellungen speichern', 'Save preferences')}</button>
+    <button>{t(language, 'Einstellungen speichern')}</button>
   </form>
 </section>
 <section class="card narrow">

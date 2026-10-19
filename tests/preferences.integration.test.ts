@@ -53,13 +53,22 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Account preferences', () => {
   });
 
   it('defaults to German and automatic appearance, and persists changes only for the current account', async () => {
-    expect(await preferences.getPreferences(first)).toEqual({ language: 'de', theme: 'auto' });
+    expect((await currentAccount(first.id))!.preferences).toEqual({
+      language: 'de',
+      theme: 'auto'
+    });
     expect(await preferences.updatePreferences(first, { language: 'en', theme: 'dark' })).toEqual({
       language: 'en',
       theme: 'dark'
     });
-    expect(await preferences.getPreferences(first)).toEqual({ language: 'en', theme: 'dark' });
-    expect(await preferences.getPreferences(second)).toEqual({ language: 'de', theme: 'auto' });
+    expect((await currentAccount(first.id))!.preferences).toEqual({
+      language: 'en',
+      theme: 'dark'
+    });
+    expect((await currentAccount(second.id))!.preferences).toEqual({
+      language: 'de',
+      theme: 'auto'
+    });
     expect((await pool.query('SELECT user_id,language,theme FROM user_preference')).rows).toEqual([
       { user_id: first.id, language: 'en', theme: 'dark' }
     ]);
@@ -76,7 +85,10 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Account preferences', () => {
         code: 'invalid_preferences'
       });
     }
-    expect(await preferences.getPreferences(first)).toEqual({ language: 'en', theme: 'dark' });
+    expect((await currentAccount(first.id))!.preferences).toEqual({
+      language: 'en',
+      theme: 'dark'
+    });
     expect(await preferences.updatePreferences(second, { language: 'de', theme: 'light' })).toEqual(
       { language: 'de', theme: 'light' }
     );
@@ -93,10 +105,6 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Account preferences', () => {
     expect((await currentAccount(first.id))?.actor.isAdmin).toBe(false);
     await pool.query("UPDATE ppi_user SET status='suspended' WHERE user_id=$1", [first.id]);
     expect(await currentAccount(first.id)).toBeNull();
-    await expect(preferences.getPreferences(first)).rejects.toMatchObject({
-      status: 403,
-      code: 'account_ineligible'
-    });
     await expect(
       preferences.updatePreferences(first, { language: 'de', theme: 'auto' })
     ).rejects.toMatchObject({ status: 403, code: 'account_ineligible' });

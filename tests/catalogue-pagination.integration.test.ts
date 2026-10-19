@@ -4,6 +4,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '../src/lib/server/domain/index.js';
+import { termOptions } from '../src/lib/terms';
 
 const testUrl = process.env.TEST_DATABASE_URL;
 const originalDatabaseUrl = process.env.DATABASE_URL;
@@ -179,6 +180,10 @@ describe.skipIf(!testUrl)('Catalogue and account pagination beyond 100 entries',
     );
     expect(pages[0]).toMatchObject({ total: 65, page: 1, pageSize: 30 });
     expect(new Set(pages.flatMap((page) => page.entries.map((row) => row.id))).size).toBe(65);
+    expect(pages.flatMap((page) => page.entries).map((row) => row.lecture_names)).toEqual(
+      Array.from({ length: 65 }, () => ['Course 001'])
+    );
+    expect((await domain.listReviewQueuePage(admin, { search: 'COURSE 001' })).total).toBe(65);
     const last = pages[2].entries.at(-1)!;
     const found = await domain.listReviewQueuePage(admin, {
       search: last.original_name.toUpperCase(),
@@ -200,6 +205,51 @@ describe.skipIf(!testUrl)('Catalogue and account pagination beyond 100 entries',
     });
     await db.pool.query('UPDATE submission SET files_deleted_at=NULL WHERE id=$1', [last.id]);
   });
+  it('uses all current lecture names without duplicating multi-lecture queue entries', async () => {
+    const uploader: Actor = {
+      id: randomUUID(),
+      email: 'zxque03@student.uni-tuebingen.de',
+      isAdmin: false
+    };
+    await db.pool.query('INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2,$3,true)', [
+      uploader.id,
+      'Queue title fixture',
+      uploader.email
+    ]);
+    await domain.activateAccount(uploader.id);
+    const second = await domain.createLecture(admin, `Queue second lecture ${randomUUID()}`);
+    const input = {
+      file: {
+        storageKey: randomUUID(),
+        sha256: 'a'.repeat(64),
+        byteCount: 12,
+        mediaType: 'text/plain' as const,
+        originalName: 'queue-test.txt'
+      },
+      lectureIds: [lectureId, second.id],
+      term: termOptions()[0].value,
+      examDate: '2026-10-19',
+      remarks: 'Queue title fixture',
+      collaboratorZx: [],
+      attested: true,
+      requestKey: randomUUID()
+    };
+    const submitted = await domain.submitProtocol(uploader, input);
+    const before = await domain.listReviewQueuePage(admin, { search: second.name });
+    expect(before.total).toBe(1);
+    expect(before.entries[0].id).toBe(submitted.submissionId);
+    expect(before.entries[0].lecture_names).toEqual(['Course 001', second.name]);
+    await domain.reviseProtocol(uploader, submitted.submissionId, {
+      ...input,
+      lectureIds: [second.id],
+      requestKey: randomUUID(),
+      file: { ...input.file, storageKey: randomUUID() }
+    });
+    const after = await domain.listReviewQueuePage(admin, { search: submitted.submissionId });
+    expect(after.entries[0].lecture_names).toEqual([second.name]);
+    expect((await domain.listReviewQueuePage(admin, { search: 'Course 001' })).total).toBe(65);
+  });
+
   it('filters native token and report status and searches older records beyond the first page', async () => {
     await db.pool.query(
       `INSERT INTO token_request(user_id,explanation,status,created_at)
@@ -278,18 +328,20 @@ describe.skipIf(!testUrl)('Catalogue and account pagination beyond 100 entries',
       );
       await client.query('UPDATE credit_account SET balance=balance+105 WHERE user_id=$1', [id]);
     });
-    const pages = await Promise.all([1, 2, 3, 4].map((page) => domain.getDashboard(actor, page)));
+    const pages = await Promise.all(
+      [1, 2, 3, 4].map((page) => domain.getCreditsDashboard(actor, page))
+    );
     expect(pages[0].ledgerPagination).toEqual({ page: 1, total: 106, pageSize: 30 });
     const entries = pages.flatMap((page) => page.ledger);
     expect(new Set(entries.map((entry) => entry.id)).size).toBe(106);
     expect(entries.at(-1).kind).toBe('activation');
     expect(entries.reduce((sum, entry) => sum + entry.amount, 0)).toBe(pages[0].balance);
-    expect((await domain.getDashboard(actor, 2)).ledger.map((entry) => entry.id)).toEqual(
+    expect((await domain.getCreditsDashboard(actor, 2)).ledger.map((entry) => entry.id)).toEqual(
       pages[1].ledger.map((entry) => entry.id)
     );
-    expect((await domain.getDashboard(actor, 999)).ledgerPagination.page).toBe(4);
-    expect((await domain.getDashboard(reader)).ledgerPagination.total).toBe(1);
-    await expect(domain.getDashboard(actor, 0)).rejects.toMatchObject({ status: 400 });
+    expect((await domain.getCreditsDashboard(actor, 999)).ledgerPagination.page).toBe(4);
+    expect((await domain.getCreditsDashboard(reader)).ledgerPagination.total).toBe(1);
+    await expect(domain.getCreditsDashboard(actor, 0)).rejects.toMatchObject({ status: 400 });
   });
   it('provides the true total and individual access to the oldest protocols beyond the ZIP limit', async () => {
     const pages = await Promise.all(

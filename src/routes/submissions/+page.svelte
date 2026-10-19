@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, text, dateText } from '$lib/i18n';
+  import { t, dateText } from '$lib/i18n';
   import { page } from '$app/state';
   import Status from '$lib/components/Status.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
@@ -26,22 +26,18 @@
         </div>
         <div class="submission-status">
           <p>
-            {text(language, 'Aktuelle Version', 'Current version')}
+            {t(language, 'Aktuelle Version')}
             {submission.revision_number}: <Status value={submission.review_state} />
           </p>
           {#if submission.visibility === 'published' && submission.published_revision_id && submission.published_revision_number != null}
             <p class="hint">
-              {text(language, 'Version', 'Version')}
+              {t(language, 'submission.version')}
               {submission.published_revision_number}
-              {text(language, 'ist veröffentlicht.', 'is published.')}
+              {t(language, 'ist veröffentlicht.')}
             </p>
           {:else}
             <p class="hint">
-              {text(
-                language,
-                'Derzeit keine veröffentlichte Version.',
-                'No version is currently published.'
-              )}
+              {t(language, 'Derzeit keine veröffentlichte Version.')}
             </p>
           {/if}
         </div>

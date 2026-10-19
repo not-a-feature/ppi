@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { building } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
@@ -58,9 +59,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     const admitted = tryAcquireUpload(event.locals.actor.id);
     if (!admitted)
       return new Response(
-        event.locals.preferences.language === 'en'
-          ? 'Uploads are busy. Please try again in a few seconds.'
-          : 'Es werden gerade Dateien hochgeladen. Bitte in wenigen Sekunden erneut versuchen.',
+        t(
+          event.locals.preferences.language,
+          'Es werden gerade Dateien hochgeladen. Bitte in wenigen Sekunden erneut versuchen.'
+        ),
         {
           status: 429,
           headers: { 'Retry-After': '2', 'Content-Type': 'text/plain; charset=utf-8' }

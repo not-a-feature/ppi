@@ -1,15 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, writeFile, rename, readFile, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { DomainError, type StoredFileInput } from './domain/index.js';
+import { DomainError, uuid } from './domain/shared.js';
+import type { StoredFileInput } from './domain/submissions.js';
 import { pool } from './db.js';
 import { checkUploadLimits } from './upload-limits.js';
 import { MAX_FILE_BYTES } from '../file-limits.js';
 
 export { MAX_FILE_BYTES };
 export function filePath(storageKey: string) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storageKey))
-    throw new Error('Invalid internal storage key');
+  if (!uuid.test(storageKey)) throw new Error('Invalid internal storage key');
   return resolve(process.env.UPLOAD_DIR ?? '.data/files', storageKey);
 }
 export function detectFile(bytes: Uint8Array, name: string): StoredFileInput['mediaType'] {

@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '$lib/server/auth';
+import { studentEmail, studentIdentifierPattern } from '$lib/server/auth/policy';
 import { field } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 const flows = ['login', 'register', 'verify-email', 'forgot-password', 'reset-password'];
@@ -17,14 +18,14 @@ export const actions: Actions = {
   default: async ({ params, request }) => {
     const form = await request.formData();
     const zx = field(form, 'zx').toLowerCase();
-    const email = `${zx}@student.uni-tuebingen.de`;
     const password = String(form.get('password') ?? '');
     try {
-      if (
-        ['login', 'register', 'verify-email', 'forgot-password'].includes(params.flow) &&
-        !/^zx[a-z]{3}[0-9]{2}$/.test(zx)
-      )
+      const requiresIdentifier = ['login', 'register', 'verify-email', 'forgot-password'].includes(
+        params.flow
+      );
+      if (requiresIdentifier && !studentIdentifierPattern.test(zx))
         return fail(400, { error: 'Bitte eine gültige zx-Kennung eingeben (z. B. zxabc12).', zx });
+      const email = requiresIdentifier ? studentEmail(zx) : '';
       if (params.flow === 'login') {
         await auth.api.signInEmail({ body: { email, password }, headers: request.headers });
       } else if (params.flow === 'register') {

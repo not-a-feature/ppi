@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { text, t, dateText } from '$lib/i18n';
+  import { t, dateText } from '$lib/i18n';
   import { page } from '$app/state';
 
+  import SearchForm from '$lib/components/SearchForm.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   let { data } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
@@ -17,17 +18,7 @@
   >
 </div>
 
-<form method="GET" class="search" style="margin-bottom:1.5rem">
-  <label for="q"
-    >{text(language, 'Suchen', 'Search')}<input
-      id="q"
-      name="q"
-      type="search"
-      maxlength="200"
-      value={data.q}
-    /></label
-  ><button class="secondary">{text(language, 'Suchen', 'Search')}</button>
-</form>
+<SearchForm query={data.q}></SearchForm>
 <section class="card table-scroll">
   <table>
     <thead
@@ -51,7 +42,7 @@
                   ? expandedLogEntries.filter((id) => id !== entry.id)
                   : [...expandedLogEntries, entry.id])}
               >{expandedLogEntries.includes(entry.id)
-                ? text(language, 'Ausblenden', 'Hide')
+                ? t(language, 'Ausblenden')
                 : t(language, 'Anzeigen')}</button
             ></td
           ></tr
@@ -61,12 +52,11 @@
           hidden={!expandedLogEntries.includes(entry.id)}
           id={`log-detail-${entry.id}`}
           ><td colspan="4"
-            ><pre
-              aria-label={text(
-                language,
-                'Details zum Logeintrag',
-                'Log entry details'
-              )}>{JSON.stringify(entry.detail, null, 2)}</pre></td
+            ><pre aria-label={t(language, 'Details zum Logeintrag')}>{JSON.stringify(
+                entry.detail,
+                null,
+                2
+              )}</pre></td
           ></tr
         >
       {:else}<tr><td colspan="4">{t(language, 'Keine Einträge.')}</td></tr>{/each}</tbody

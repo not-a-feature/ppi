@@ -23,6 +23,6 @@ Set a random `BETTER_AUTH_SECRET` in `.env` first. Open http://localhost:5173; l
 
 Run `npm run check`, `npm test` and `npm run build`. Database tests require a disposable PostgreSQL database in `TEST_DATABASE_URL`.
 
-This is a work in progress. Production setup and the legacy import are still pending. See [implementation status](docs/implementation-status.md) and [deployment notes](docs/modules/14-deployment.md).
+This is a work in progress. Production setup and the legacy import are still pending. See [architecture](docs/architecture.md), [operations](docs/operations.md) and [migration](docs/migration.md).
 
 Licensed under [EUPL 1.2](LICENSE). Legacy asset attribution is in [NOTICE](NOTICE).

@@ -3,7 +3,7 @@
   import { invalidateAll } from '$app/navigation';
   import { untrack } from 'svelte';
   import { namedAction } from '$lib/form-actions';
-  import { text, dateText, type Language } from '$lib/i18n';
+  import { t, dateText, type Language, type MessageKey } from '$lib/i18n';
   import type { ContentCheckReport } from '$lib/server/content-checks';
 
   let {
@@ -13,7 +13,8 @@
   }: { initialReport: ContentCheckReport; submissionId: string; language: Language } = $props();
   let report = $state(untrack(() => initialReport));
   let refreshFailed = $state(false);
-  const tr = (de: string, en: string) => text(language, de, en);
+  const tr = (key: MessageKey, values?: Record<string, string | number>) =>
+    t(language, key, values);
   let pending = $derived(report.state === 'pending' || report.state === 'waiting');
   let pollKey = $derived(`${submissionId}:${pending}`);
   let assessed = $derived(report.state === 'ready');
@@ -65,21 +66,20 @@
   });
 
   function stateLabel(flag: boolean, available = true) {
-    if (!available)
-      return pending ? tr('Ausstehend', 'Pending') : tr('Nicht prüfbar', 'Unavailable');
-    return flag ? tr('Auffällig', 'Review') : 'OK';
+    if (!available) return pending ? tr('Ausstehend') : tr('Nicht prüfbar');
+    return flag ? tr('Auffällig') : 'OK';
   }
 
   let rows = $derived([
     {
-      label: tr('Identische Datei', 'Identical file'),
+      label: tr('Identische Datei'),
       flag: report.duplicates.length > 0,
       available: true,
       detail: '',
       matches: report.duplicates
     },
     {
-      label: tr('Textähnlichkeit', 'Text similarity'),
+      label: tr('Textähnlichkeit'),
       flag: report.similar.length > 0,
       available:
         assessed &&
@@ -89,62 +89,59 @@
       detail: !assessed
         ? ''
         : report.wordCount < report.minSimilarityWords
-          ? tr('Zu wenig Text.', 'Too little text.')
+          ? tr('Zu wenig Text.')
           : incompleteText
-            ? tr('Nur lesbarer Text verglichen.', 'Only readable text compared.')
+            ? tr('Nur lesbarer Text verglichen.')
             : report.comparedFiles === 0 && !report.similar.length
-              ? tr('Keine Vergleichsdateien.', 'No comparison files.')
+              ? tr('Keine Vergleichsdateien.')
               : '',
       matches: report.similar
     },
     {
-      label: tr('Inhalt', 'Content'),
+      label: tr('Inhalt'),
       flag: report.wordCount < report.minWords,
       available: !unavailable,
       detail: assessed
-        ? `${report.wordCount.toLocaleString(language)} ${tr('Wörter', 'words')}${report.pageCount === null ? '' : ` · ${report.pageCount} ${tr(report.pageCount === 1 ? 'Seite' : 'Seiten', report.pageCount === 1 ? 'page' : 'pages')}`}`
+        ? `${report.wordCount.toLocaleString(language)} ${tr('Wörter')}${report.pageCount === null ? '' : ` · ${report.pageCount} ${tr(report.pageCount === 1 ? 'document.page' : 'document.pages')}`}`
         : '',
       matches: []
     },
     {
-      label: tr('Lesbarkeit', 'Readable text'),
+      label: tr('Lesbarkeit'),
       flag: report.wordCount === 0 || incompleteText,
       available: assessed,
       detail: !assessed
         ? ''
         : report.wordCount === 0
-          ? tr(
-              report.pageCount === null ? 'Kein lesbarer Text.' : 'Kein Text extrahierbar.',
-              report.pageCount === null ? 'No readable text.' : 'No extractable text.'
-            )
+          ? tr(report.pageCount === null ? 'Kein lesbarer Text.' : 'Kein Text extrahierbar.')
           : incompleteText
-            ? `${report.textlessPages} ${tr('Seite(n) ohne Text.', 'page(s) without text.')}`
+            ? `${report.textlessPages} ${tr('Seite(n) ohne Text.')}`
             : '',
       matches: []
     },
     {
-      label: tr('Wiederholungen', 'Repetition'),
+      label: tr('Wiederholungen'),
       flag: report.repeatedFraction > report.repetitionThreshold,
       available: assessed && report.wordCount >= report.minSimilarityWords,
       detail:
         assessed && report.repeatedFraction > report.repetitionThreshold
-          ? `${Math.round(report.repeatedFraction * 100)} % ${tr('wiederholte Wortfolgen', 'repeated word sequences')}`
+          ? `${Math.round(report.repeatedFraction * 100)} % ${tr('wiederholte Wortfolgen')}`
           : '',
       matches: []
     },
     {
-      label: tr('Prüfungsangaben', 'Exam details'),
+      label: tr('Prüfungsangaben'),
       flag: report.missingMetadata.length > 0,
       available: true,
       detail: report.missingMetadata.length
-        ? tr('Fehlt: ', 'Missing: ') +
+        ? tr('Fehlt: ') +
           report.missingMetadata
             .map((key) =>
               key === 'examiner'
-                ? tr('Prüfende Person', 'Examiner')
+                ? tr('Prüfende Person')
                 : key === 'date'
-                  ? tr('Prüfungsdatum', 'Exam date')
-                  : tr('Semester', 'Term')
+                  ? tr('Prüfungsdatum')
+                  : tr('Semester')
             )
             .join(', ')
         : '',
@@ -154,30 +151,27 @@
 </script>
 
 <section class="card automatic-checks">
-  <h2>{tr('Automatische Prüfungen', 'Automatic checks')}</h2>
+  <h2>{tr('Automatische Prüfungen')}</h2>
   {#if refreshFailed}<p class="notice warning" role="alert">
-      {tr('Aktualisierung fehlgeschlagen. Seite neu laden.', 'Update failed. Reload the page.')}
+      {tr('Aktualisierung fehlgeschlagen. Seite neu laden.')}
     </p>
   {:else if pending}<p class="analysis-state" role="status">
       <span class="spinner" aria-hidden="true"></span>{report.state === 'waiting'
-        ? tr('Dateiprüfung ausstehend…', 'File checks pending…')
+        ? tr('Dateiprüfung ausstehend…')
         : report.ocrStatus === 'pending'
-          ? tr('OCR läuft…', 'Running OCR…')
-          : tr('Analyse läuft…', 'Analyzing…')}
+          ? tr('OCR läuft…')
+          : tr('Analyse läuft…')}
     </p>
   {:else if report.state === 'unavailable'}<p class="notice warning">
       {report.reason === 'text_limit' || report.reason === 'page_limit'
-        ? tr('Analysegrenze erreicht.', 'Analysis limit reached.')
-        : tr(
-            'Textanalyse nicht verfügbar. Vorschau prüfen.',
-            'Text analysis unavailable. Check preview.'
-          )}
+        ? tr('Analysegrenze erreicht.')
+        : tr('Textanalyse nicht verfügbar. Vorschau prüfen.')}
     </p>
   {:else if report.state === 'failed'}<p class="notice warning">
-      {tr('Analyse fehlgeschlagen. Erneut prüfen.', 'Analysis failed. Retry.')}
+      {tr('Analyse fehlgeschlagen. Erneut prüfen.')}
     </p>
   {:else if report.state === 'blocked'}<p class="notice warning">
-      {tr('Dateiprüfung nicht bestanden.', 'File checks did not pass.')}
+      {tr('Dateiprüfung nicht bestanden.')}
     </p>{/if}
   <div class="check-list">
     {#if report.ocrStatus}
@@ -190,21 +184,18 @@
             class:warn={['partial', 'failed'].includes(report.ocrStatus)}
           >
             {report.ocrStatus === 'skipped'
-              ? tr('Nicht nötig', 'Not needed')
+              ? tr('Nicht nötig')
               : report.ocrStatus === 'ready'
-                ? tr('Fertig', 'Complete')
+                ? tr('Fertig')
                 : report.ocrStatus === 'partial'
-                  ? tr('Teilweise', 'Partial')
+                  ? tr('Teilweise')
                   : report.ocrStatus === 'failed'
-                    ? tr('Fehlgeschlagen', 'Failed')
-                    : tr('Ausstehend', 'Pending')}
+                    ? tr('Fehlgeschlagen')
+                    : tr('Ausstehend')}
           </span>
         </div>
         {#if report.ocrStatus === 'failed'}<p>
-            {tr(
-              'Original verfügbar. OCR unter Verarbeitung erneut starten.',
-              'Original retained. Retry OCR under Processing.'
-            )}
+            {tr('Original verfügbar. OCR unter Verarbeitung erneut starten.')}
           </p>{/if}
       </div>
     {/if}
@@ -224,9 +215,9 @@
               <li>
                 <a href="/admin/review/{match.id}#revision-{match.revisionId}">{match.name}</a>
                 <span
-                  >{tr('Version', 'Revision')}
+                  >{tr('Version')}
                   {match.revision}{match.sameSubmission
-                    ? tr(' · gleiche Einreichung', ' · same submission')
+                    ? tr(' · gleiche Einreichung')
                     : ''}{'score' in match
                     ? ` · ${Math.round(Number(match.score) * 100)} %`
                     : ''}</span
@@ -238,27 +229,26 @@
     {/each}
   </div>
   <details class="rules">
-    <summary>{tr('Prüfregeln', 'Check rules')}</summary>
+    <summary>{tr('Prüfregeln')}</summary>
     <p>
-      {tr(
-        `Inhalt: < ${report.minWords} Wörter. Ähnlichkeit: ≥ ${Math.round(report.similarityThreshold * 100)} % gemeinsamer Fünf-Wort-Folgen, ab ${report.minSimilarityWords} Wörtern. Wiederholungen: > ${Math.round(report.repetitionThreshold * 100)} %.`,
-        `Content: < ${report.minWords} words. Similarity: ≥ ${Math.round(report.similarityThreshold * 100)}% shared five-word sequences, from ${report.minSimilarityWords} words. Repetition: > ${Math.round(report.repetitionThreshold * 100)}%.`
-      )}
+      {tr('checks.rules', {
+        minWords: report.minWords,
+        similarityPercent: Math.round(report.similarityThreshold * 100),
+        minSimilarityWords: report.minSimilarityWords,
+        repetitionPercent: Math.round(report.repetitionThreshold * 100)
+      })}
     </p>
     <p>
-      {tr(
-        'Vergleich mit PDF/TXT, auch früheren Versionen. Keine automatischen Entscheidungen.',
-        'Compared with PDF/TXT, including earlier revisions. No automatic decisions.'
-      )}
+      {tr('Vergleich mit PDF/TXT, auch früheren Versionen. Keine automatischen Entscheidungen.')}
     </p>
   </details>
   {#if report.checkedAt}<p class="checked-at">
-      {tr('Geprüft:', 'Checked:')}
+      {tr('Geprüft:')}
       {dateText(language, report.checkedAt, true)}
     </p>{/if}
   {#if report.state !== 'waiting' && report.state !== 'blocked' && (!pending || refreshFailed)}
     <form method="POST" action={namedAction(page.url, 'contentCheck')}>
-      <button class="secondary recheck">{tr('Erneut prüfen', 'Run checks again')}</button>
+      <button class="secondary recheck">{tr('Erneut prüfen')}</button>
     </form>
   {/if}
 </section>

@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { fail } from '@sveltejs/kit';
 import {
   getSubmission,
@@ -54,19 +55,14 @@ export const actions: Actions = {
   contentCheck: async ({ locals, params }) =>
     actionResult(
       () => requestContentCheck(admin(locals), params.id),
-      locals.preferences.language === 'en'
-        ? 'Automatic checks queued.'
-        : 'Automatische Prüfungen wurden eingereiht.'
+      t(locals.preferences.language, 'Automatische Prüfungen wurden eingereiht.')
     ),
   deleteFiles: async ({ locals, params, request }) => {
     const current = admin(locals),
       form = await request.formData();
     if (form.get('confirmed') !== 'on' || field(form, 'confirmation') !== 'DELETE')
       return fail(400, {
-        error:
-          locals.preferences.language === 'en'
-            ? 'Confirm file deletion by entering DELETE.'
-            : 'Bitte die Dateilöschung mit DELETE bestätigen.'
+        error: t(locals.preferences.language, 'Bitte die Dateilöschung mit DELETE bestätigen.')
       });
     return actionResult(
       () =>
@@ -75,9 +71,10 @@ export const actions: Actions = {
           expectedVersion: Number(field(form, 'version')),
           reason: field(form, 'reason')
         }),
-      locals.preferences.language === 'en'
-        ? 'Protocol files are blocked and queued for deletion. Metadata and history are retained.'
-        : 'Die Protokolldateien wurden gesperrt und zur Löschung eingereiht. Metadaten und Verlauf bleiben erhalten.'
+      t(
+        locals.preferences.language,
+        'Die Protokolldateien wurden gesperrt und zur Löschung eingereiht. Metadaten und Verlauf bleiben erhalten.'
+      )
     );
   },
   reprocess: async ({ locals, params, request }) => {

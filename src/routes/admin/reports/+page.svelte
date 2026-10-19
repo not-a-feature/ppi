@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { categoryLabel, text, t, dateText } from '$lib/i18n';
+  import { categoryLabel, t, dateText } from '$lib/i18n';
   import { page } from '$app/state';
   import { namedAction } from '$lib/form-actions';
   import Status from '$lib/components/Status.svelte';
   import Feedback from '$lib/components/Feedback.svelte';
+  import SearchForm from '$lib/components/SearchForm.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   let { data, form } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
@@ -11,24 +12,15 @@
 
 <div class="page-head"><h1>{t(language, 'Inhaltsmeldungen')}</h1></div>
 <Feedback {form} />
-<form method="GET" class="search" style="margin-bottom:1.5rem">
-  <label for="q"
-    >{text(language, 'Suchen', 'Search')}<input
-      id="q"
-      name="q"
-      type="search"
-      maxlength="200"
-      value={data.q}
-    /></label
-  ><label
-    >{text(language, 'Anzeigen', 'Show')}<select name="scope"
+<SearchForm query={data.q}>
+  <label
+    >{t(language, 'Anzeigen')}<select name="scope"
       ><option value="pending" selected={data.scope === 'pending'}
-        >{text(language, 'Ausstehend', 'Pending')}</option
-      ><option value="all" selected={data.scope === 'all'}>{text(language, 'Alle', 'All')}</option
-      ></select
+        >{t(language, 'Ausstehend')}</option
+      ><option value="all" selected={data.scope === 'all'}>{t(language, 'Alle')}</option></select
     ></label
-  ><button class="secondary">{text(language, 'Suchen', 'Search')}</button>
-</form>
+  >
+</SearchForm>
 <div class="stack">
   {#each data.entries as entry}<article class="card">
       <div class="split">

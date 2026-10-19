@@ -11,20 +11,6 @@ import {
 import { transaction } from '../db.js';
 import { rewardSubmission } from './credits.js';
 
-export async function listReviewQueue(actor: Actor, includeAll = false) {
-  return transaction(async (client) => {
-    await currentActor(client, actor, true);
-    return (
-      await client.query(
-        `SELECT s.*,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail FROM submission s
-    JOIN submission_revision r ON r.id=s.current_revision_id JOIN stored_file f ON f.id=r.file_id
-    WHERE $1 OR (s.files_deleted_at IS NULL AND f.deleted_at IS NULL AND s.review_state IN ('processing','awaiting_review','changes_requested')) ORDER BY s.created_at,s.id`,
-        [includeAll]
-      )
-    ).rows;
-  });
-}
-
 export async function listReviewQueuePage(
   actor: Actor,
   options: { search?: string; page?: number; includeAll?: boolean; pageSize?: number } = {}
@@ -54,7 +40,9 @@ export async function listReviewQueuePage(
     if (search) {
       values.push(search);
       filters.push(
-        `(${['s.id::text', 's.uploader_id', 's.current_revision_id::text', 's.published_revision_id::text', 's.review_state', 's.visibility', 'r.remarks', 'f.original_name', 'f.safety_status', 'f.safety_detail::text'].map((field) => `strpos(lower(${field}),lower($1))>0`).join(' OR ')})`
+        `(${['s.id::text', 's.uploader_id', 's.current_revision_id::text', 's.published_revision_id::text', 's.review_state', 's.visibility', 'r.remarks', 'f.original_name', 'f.safety_status', 'f.safety_detail::text'].map((field) => `strpos(lower(${field}),lower($1))>0`).join(' OR ')}
+          OR EXISTS(SELECT 1 FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id
+            WHERE rl.revision_id=r.id AND strpos(lower(l.name),lower($1))>0))`
       );
     }
     const filter = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
@@ -64,7 +52,9 @@ export async function listReviewQueuePage(
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
-        `SELECT s.*,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail ${from} ${filter}
+        `SELECT s.*,r.revision_number,r.remarks,f.original_name,f.safety_status,f.safety_detail,
+          ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id
+            WHERE rl.revision_id=r.id ORDER BY l.name,l.id) lecture_names ${from} ${filter}
       ORDER BY s.created_at,s.id LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
         [...values, pageSize, (page - 1) * pageSize]
       )

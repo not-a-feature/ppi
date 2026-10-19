@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { fail } from '@sveltejs/kit';
 import {
   listAdminUsersPage,
@@ -35,7 +36,7 @@ export const actions: Actions = {
           String(form.get('note') ?? ''),
           Number(field(form, 'version'))
         ),
-      locals.preferences.language === 'en' ? 'Internal note saved.' : 'Interne Notiz gespeichert.'
+      t(locals.preferences.language, 'Interne Notiz gespeichert.')
     );
     if ('data' in result)
       return fail(result.status, {

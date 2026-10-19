@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { t, text } from '$lib/i18n';
+  import { t } from '$lib/i18n';
   import { page } from '$app/state';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { children } = $props();
   let links = $derived([
     ['/admin', t(language, 'Übersicht')],
-    ['/admin/statistics', text(language, 'Statistik', 'Statistics')],
+    ['/admin/statistics', t(language, 'Statistik')],
     ['/admin/review', t(language, 'Prüfung')],
     ['/admin/users', t(language, 'Konten')],
     ['/admin/catalogue', t(language, 'Katalog')],

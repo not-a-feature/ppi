@@ -107,7 +107,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       version = current.version;
       revisionIds = [submitted.revisionId, revised.revisionId];
       fileKeys = [first.storageKey, second.storageKey];
-      balance = (await domain.getDashboard(student)).balance;
+      balance = (await domain.getCreditsDashboard(student)).balance;
     });
 
     afterAll(async () => {
@@ -155,7 +155,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         status: 410
       });
       expect((await domain.getSubmission(admin, submissionId)).revisions).toHaveLength(2);
-      expect((await domain.getDashboard(student)).balance).toBe(balance);
+      expect((await domain.getCreditsDashboard(student)).balance).toBe(balance);
       expect(
         (await pool.query('SELECT count(*)::integer AS count FROM moderation_decision')).rows[0]
           .count
@@ -198,7 +198,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         (await pool.query('SELECT count(*)::integer AS count FROM submission_revision')).rows[0]
           .count
       ).toBe(2);
-      expect((await domain.getDashboard(student)).balance).toBe(balance);
+      expect((await domain.getCreditsDashboard(student)).balance).toBe(balance);
     });
 
     it('restricts statistics to current admins and counts only the requested thirty-day audit window', async () => {

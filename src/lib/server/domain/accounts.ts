@@ -60,16 +60,6 @@ export async function activateAccount(userId: string) {
   });
 }
 
-export async function listAdminUsers(actor: Actor) {
-  return transaction(async (client) => {
-    await currentActor(client, actor, true);
-    return (
-      await client.query(`SELECT u.id,u.email,u."emailVerified" email_verified,p.is_admin,p.status,COALESCE(c.balance,0) balance FROM "user" u JOIN ppi_user p ON p.user_id=u.id
-    LEFT JOIN credit_account c ON c.user_id=u.id ORDER BY u.email,u.id`)
-    ).rows;
-  });
-}
-
 export async function listAdminUsersPage(
   actor: Actor,
   options: { search?: string; page?: number } = {}

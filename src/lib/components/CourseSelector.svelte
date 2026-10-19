@@ -10,7 +10,7 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
-  import { text, type Language } from '$lib/i18n';
+  import { t, type Language, type MessageKey } from '$lib/i18n';
   let {
     lectures,
     value = $bindable(),
@@ -26,7 +26,8 @@
     language: Language;
     id: string;
   } = $props();
-  const tr = (de: string, en: string) => text(language, de, en);
+  const tr = (key: MessageKey, values?: Record<string, string | number>) =>
+    t(language, key, values);
   const normalise = (name: string) => name.normalize('NFKC').trim().toLocaleLowerCase('de-DE');
   let query = $state('');
   let open = $state(false);
@@ -70,17 +71,13 @@
     open = true;
     highlighted = -1;
     await tick();
-    searchInput!.setCustomValidity(
-      tr('Bitte eine Vorlesung auswählen oder neu anlegen.', 'Select a course or create a new one.')
-    );
+    searchInput!.setCustomValidity(tr('Bitte eine Vorlesung auswählen oder neu anlegen.'));
     searchInput?.focus();
   }
   function search() {
     open = true;
     highlighted = -1;
-    searchInput!.setCustomValidity(
-      tr('Bitte eine Vorlesung auswählen oder neu anlegen.', 'Select a course or create a new one.')
-    );
+    searchInput!.setCustomValidity(tr('Bitte eine Vorlesung auswählen oder neu anlegen.'));
   }
   async function keydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
@@ -116,13 +113,12 @@
     <div class="selected-course">
       <span class="selection-check" aria-hidden="true">✓</span><span class="selected-name"
         >{selectedName}</span
-      >{#if pending}<span class="pending-label">{tr('Ausstehend', 'Pending')}</span>{/if}<button
+      >{#if pending}<span class="pending-label">{tr('Ausstehend')}</span>{/if}<button
         bind:this={changeButton}
         type="button"
         class="change-course"
         onclick={edit}
-        aria-label={tr('Vorlesung ändern: ', 'Change course: ') + selectedName}
-        >{tr('Ändern', 'Change')}</button
+        aria-label={tr('Vorlesung ändern: ') + selectedName}>{tr('Ändern')}</button
       >
     </div>
   {:else}
@@ -131,8 +127,8 @@
       bind:value={query}
       {id}
       type="search"
-      placeholder={tr('Vorlesung suchen', 'Search courses')}
-      aria-label={tr('Vorlesung suchen', 'Search courses')}
+      placeholder={tr('Vorlesung suchen')}
+      aria-label={tr('Vorlesung suchen')}
       role="combobox"
       aria-autocomplete="list"
       aria-expanded={open}
@@ -151,7 +147,7 @@
         id={id + '-options'}
         class="course-options"
         role="listbox"
-        aria-label={tr('Vorlesungen', 'Courses')}
+        aria-label={tr('Vorlesungen')}
       >
         {#each options as lecture, index}<button
             type="button"
@@ -163,7 +159,7 @@
             onpointerenter={() => (highlighted = index)}
             onclick={() => choose(lecture)}
             ><span>{lecture.name}</span>{#if lecture.approval_status === 'pending'}<span
-                class="pending-label">{tr('Ausstehend', 'Pending')}</span
+                class="pending-label">{tr('Ausstehend')}</span
               >{/if}</button
           >{/each}
         {#if canCreate}<button
@@ -176,10 +172,11 @@
             class:highlighted={highlighted === options.length}
             onpointerenter={() => (highlighted = options.length)}
             onclick={create}
-            ><span>{tr('Neu anlegen: ', 'Create course: ')}<strong>{query.trim()}</strong></span
-            ><span class="pending-label">{tr('Ausstehend', 'Pending')}</span></button
+            ><span>{tr('Neu anlegen: ')}<strong>{query.trim()}</strong></span><span
+              class="pending-label">{tr('Ausstehend')}</span
+            ></button
           >{:else if !options.length}<p class="no-options">
-            {tr('Keine weitere Vorlesung gefunden.', 'No other course found.')}
+            {tr('Keine weitere Vorlesung gefunden.')}
           </p>{/if}
       </div>
     {/if}

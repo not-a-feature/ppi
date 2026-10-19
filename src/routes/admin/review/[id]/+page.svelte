@@ -1,8 +1,7 @@
 <script lang="ts">
   import { termLabel } from '$lib/terms';
-  import { feedbackText, text } from '$lib/i18n';
+  import { t, feedbackText, dateText } from '$lib/i18n';
   import { untrack } from 'svelte';
-  import { t, dateText } from '$lib/i18n';
   import { page } from '$app/state';
   import { namedAction } from '$lib/form-actions';
   import Status from '$lib/components/Status.svelte';
@@ -11,6 +10,12 @@
   import AutomaticChecks from '$lib/components/AutomaticChecks.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data, form } = $props();
+  let lectureTitle = $derived(
+    data.lectures
+      .filter((lecture) => data.revision.lecture_ids.includes(lecture.id))
+      .map((lecture) => lecture.name)
+      .join(', ')
+  );
   let acceptanceAvailable = $derived(
     data.revision.safety_status === 'clean' &&
       data.lectures.every(
@@ -71,21 +76,18 @@
   function standardFeedback(value: string, locale: 'de' | 'en') {
     if (!value) return '';
     if (value === 'accepted')
-      return text(
+      return t(
         locale,
-        'Vielen Dank für deinen Beitrag. Dein Protokoll wurde geprüft und veröffentlicht.',
-        'Thank you for your contribution. Your protocol has been reviewed and published.'
+        'Vielen Dank für deinen Beitrag. Dein Protokoll wurde geprüft und veröffentlicht.'
       );
     if (value === 'rejected')
-      return text(
+      return t(
         locale,
-        'Dein Protokoll kann in dieser Form nicht veröffentlicht werden. Bitte beachte die Rückmeldung der Redaktion.',
-        'Your protocol cannot be published in its current form. Please consider the review feedback.'
+        'Dein Protokoll kann in dieser Form nicht veröffentlicht werden. Bitte beachte die Rückmeldung der Redaktion.'
       );
-    return text(
+    return t(
       locale,
-      'Bitte überarbeite dein Protokoll anhand der Hinweise und reiche eine verbesserte Version ein.',
-      'Please revise your protocol using the feedback and submit an improved version.'
+      'Bitte überarbeite dein Protokoll anhand der Hinweise und reiche eine verbesserte Version ein.'
     );
   }
   let publicFeedback = $state(
@@ -130,21 +132,19 @@
 </script>
 
 {#if data.submission.files_deleted_at}<div class="notice warning">
-    {text(
+    {t(
       language,
-      'Die Protokolldateien wurden gelöscht oder zur Löschung eingereiht. Metadaten, Entscheidungen und Tokenbuchungen bleiben erhalten.',
-      'Protocol files have been deleted or queued for deletion. Metadata, decisions and token entries are retained.'
+      'Die Protokolldateien wurden gelöscht oder zur Löschung eingereiht. Metadaten, Entscheidungen und Tokenbuchungen bleiben erhalten.'
     )}
   </div>{/if}
 {#if !data.submission.files_deleted_at && unapprovedLectures.length}<div class="notice warning">
-    {text(
+    {t(
       language,
-      'Vor der Veröffentlichung müssen diese Veranstaltungsvorschläge freigegeben werden:',
-      'Approve these lecture proposals before publishing:'
+      'Vor der Veröffentlichung müssen diese Veranstaltungsvorschläge freigegeben werden:'
     )}
     {unapprovedLectures.map((lecture) => lecture.name).join(', ')}.
     <a href="/admin/catalogue?review={encodeURIComponent(data.submission.id)}"
-      >{text(language, 'Katalog prüfen', 'Review catalogue')}</a
+      >{t(language, 'Katalog prüfen')}</a
     >
   </div>{/if}
 <div class="page-head">
@@ -153,7 +153,7 @@
       <a href="/admin/review">{t(language, 'Prüfwarteschlange')}</a>
       {t(language, '/ Einreichung')}
     </p>
-    <h1>{data.revision.original_name}</h1>
+    <h1>{lectureTitle}</h1>
     <p>
       {t(language, 'Version')}
       {data.revision.revision_number}
@@ -166,14 +166,10 @@
 {#if form?.reviewSaved}
   <div class="notice review-complete">
     <div role="status">
-      <strong>{text(language, 'Entscheidung gespeichert.', 'Decision saved.')}</strong>
+      <strong>{t(language, 'Entscheidung gespeichert.')}</strong>
       {#if !data.nextReview}
         <p>
-          {text(
-            language,
-            'Keine weiteren prüfbereiten Protokolle.',
-            'No more protocols ready for review.'
-          )}
+          {t(language, 'Keine weiteren prüfbereiten Protokolle.')}
         </p>
       {/if}
     </div>
@@ -181,7 +177,7 @@
       <a class="button secondary" href="/admin/review">{t(language, 'Prüfwarteschlange')}</a>
       {#if data.nextReview}
         <a class="button" href="/admin/review/{data.nextReview.id}">
-          {text(language, 'Nächstes Protokoll', 'Next protocol')}
+          {t(language, 'Nächstes Protokoll')}
         </a>
       {/if}
     </div>
@@ -195,11 +191,11 @@
       <section class="card document-preview">
         <div class="split">
           <h2>
-            {text(language, 'Vorschau', 'Preview')} · {t(language, 'Version')}
+            {t(language, 'Vorschau')} · {t(language, 'Version')}
             {data.revision.revision_number}
           </h2>
           <div class="actions">
-            <a href="/files/{data.revision.id}">{text(language, 'Herunterladen', 'Download')}</a>
+            <a href="/files/{data.revision.id}">{t(language, 'Herunterladen')}</a>
           </div>
         </div>
         {#key `${data.revision.id}:${data.contentChecks?.ocrStatus ?? 'none'}`}
@@ -276,15 +272,12 @@
             </p>{/each}
           {#each revision.reconsiderations as reconsideration}
             <hr class="divider" />
-            <h3>{text(language, 'Erneute Prüfung angefragt', 'Reconsideration requested')}</h3>
+            <h3>{t(language, 'Erneute Prüfung angefragt')}</h3>
             <p>{reconsideration.explanation}</p>
             <p class="hint">
               {reconsideration.status === 'open'
-                ? text(language, 'Offen', 'Open')
-                : text(language, 'Abgeschlossen', 'Resolved')} · {dateText(
-                language,
-                reconsideration.created_at
-              )}
+                ? t(language, 'Offen')
+                : t(language, 'report.resolved')} · {dateText(language, reconsideration.created_at)}
             </p>
             {#if reconsideration.resolution}<p>{reconsideration.resolution}</p>{/if}
           {/each}
@@ -304,13 +297,13 @@
           </div>
           <form method="POST" action={namedAction(page.url, 'reprocess')}>
             <label
-              >{text(language, 'Dateiversion', 'File revision')}
+              >{t(language, 'Dateiversion')}
               <select name="revisionId">
                 {#each data.submission.revisions as revision}<option value={revision.id}>
                     {t(language, 'Version')}
                     {revision.revision_number}: {revision.original_name}{revision.id ===
                     data.submission.published_revision_id
-                      ? text(language, ' (veröffentlicht)', ' (published)')
+                      ? t(language, ' (veröffentlicht)')
                       : ''}
                   </option>{/each}
               </select>
@@ -355,17 +348,16 @@
               value={recipientId}
             />{/each}
           {#if form?.requiresRefresh}<div class="notice warning">
-              {text(
+              {t(
                 language,
-                'Deine Eingaben wurden erhalten. Lade vor dem Speichern den aktuellen Stand und prüfe die Entscheidung erneut.',
-                'Your entries were preserved. Load the current state and review the decision again before saving.'
+                'Deine Eingaben wurden erhalten. Lade vor dem Speichern den aktuellen Stand und prüfe die Entscheidung erneut.'
               )}
             </div>{/if}
           <label
             >{t(language, 'Veröffentlichung')}<select name="outcome" bind:value={outcome} required
-              ><option value="" disabled
-                >{text(language, 'Entscheidung wählen', 'Choose a decision')}</option
-              ><option value="accepted" disabled={!acceptanceAvailable}
+              ><option value="" disabled>{t(language, 'Entscheidung wählen')}</option><option
+                value="accepted"
+                disabled={!acceptanceAvailable}
                 >{t(language, 'Annehmen und veröffentlichen')}</option
               ><option value="changes_requested">{t(language, 'Überarbeitung erbitten')}</option
               ><option value="rejected">{t(language, 'Ablehnen')}</option></select
@@ -439,12 +431,7 @@
           {#if form?.values}<button
               class="secondary"
               formaction={namedAction(page.url, 'refreshDecision')}
-              formnovalidate
-              >{text(
-                language,
-                'Aktuellen Stand laden und erneut prüfen',
-                'Load current state and review again'
-              )}</button
+              formnovalidate>{t(language, 'Aktuellen Stand laden und erneut prüfen')}</button
             >{/if}
         </form>
       </section>
@@ -479,16 +466,15 @@
         </details>
       </section>{/if}
     {#if !data.submission.files_deleted_at}<section class="card">
-        <h2>{text(language, 'Protokolldateien löschen', 'Delete protocol files')}</h2>
+        <h2>{t(language, 'Protokolldateien löschen')}</h2>
         <p class="hint">
-          {text(
+          {t(
             language,
-            'Alle Dateiversionen und betroffene ZIP-Archive werden entfernt. Metadaten, Entscheidungen und Tokenbuchungen bleiben erhalten.',
-            'All file versions and affected ZIP archives will be removed. Metadata, decisions and token entries are retained.'
+            'Alle Dateiversionen und betroffene ZIP-Archive werden entfernt. Metadaten, Entscheidungen und Tokenbuchungen bleiben erhalten.'
           )}
         </p>
         <details>
-          <summary>{text(language, 'Dateilöschung anfordern', 'Request file deletion')}</summary>
+          <summary>{t(language, 'Dateilöschung anfordern')}</summary>
           <form
             method="POST"
             action={namedAction(page.url, 'deleteFiles')}
@@ -499,21 +485,18 @@
               >{t(language, 'Begründung')}<textarea name="reason" required maxlength="2000"
               ></textarea></label
             ><label
-              >{text(language, 'Zur Bestätigung DELETE eingeben', 'Enter DELETE to confirm')}<input
+              >{t(language, 'Zur Bestätigung DELETE eingeben')}<input
                 name="confirmation"
                 required
                 pattern="DELETE"
                 autocomplete="off"
               /></label
             ><label
-              ><input type="checkbox" name="confirmed" required />{text(
+              ><input type="checkbox" name="confirmed" required />{t(
                 language,
-                'Dateien dauerhaft löschen; Verlauf behalten',
-                'Permanently delete files; retain history'
+                'Dateien dauerhaft löschen; Verlauf behalten'
               )}</label
-            ><button class="danger"
-              >{text(language, 'Protokolldateien löschen', 'Delete protocol files')}</button
-            >
+            ><button class="danger">{t(language, 'Protokolldateien löschen')}</button>
           </form>
         </details>
       </section>{/if}

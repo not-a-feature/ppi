@@ -52,19 +52,6 @@ async function paginatedCatalogue(
   };
 }
 
-const lectureCatalogueSql = `SELECT l.*,(count(DISTINCT s.id) FILTER (WHERE f.safety_status='clean' AND f.deleted_at IS NULL AND s.files_deleted_at IS NULL
-          AND NOT EXISTS(SELECT 1 FROM revision_lecture other JOIN lecture ol ON ol.id=other.lecture_id WHERE other.revision_id=r.id AND ol.approval_status<>'approved')))::integer protocol_count,a.expires_at FROM lecture l
-      LEFT JOIN lecture_access a ON a.lecture_id=l.id AND a.user_id=$1 AND a.expires_at>now()
-      LEFT JOIN revision_lecture rl ON rl.lecture_id=l.id LEFT JOIN submission s ON s.published_revision_id=rl.revision_id AND s.visibility='published'
-      LEFT JOIN submission_revision r ON r.id=s.published_revision_id LEFT JOIN stored_file f ON f.id=r.file_id
-      WHERE ($2='' OR l.name ILIKE '%'||$2||'%' OR EXISTS(SELECT 1 FROM unnest(l.aliases) alias WHERE alias ILIKE '%'||$2||'%'))
-      AND ($3 OR (l.approval_status='approved' AND NOT l.archived))
-      AND ($5='all' OR l.approval_status=$5)
-      GROUP BY l.id,a.expires_at
-      HAVING NOT $4 OR count(DISTINCT s.id) FILTER (WHERE f.safety_status='clean' AND f.deleted_at IS NULL AND s.files_deleted_at IS NULL
-        AND NOT EXISTS(SELECT 1 FROM revision_lecture other JOIN lecture ol ON ol.id=other.lecture_id WHERE other.revision_id=r.id AND ol.approval_status<>'approved'))>0
-      ORDER BY l.name,l.id`;
-
 const visibleLectureProtocols = `FROM revision_lecture rl JOIN submission s ON s.published_revision_id=rl.revision_id
   JOIN submission_revision r ON r.id=s.published_revision_id JOIN stored_file f ON f.id=r.file_id
   WHERE rl.lecture_id=l.id AND s.visibility='published' AND f.safety_status='clean'
@@ -119,33 +106,6 @@ export async function listLecturesPage(
       `(SELECT count(*)::integer ${visibleLectureProtocols.replace('rl.lecture_id=l.id', 'rl.lecture_id=selected.id')}) protocol_count,
        (SELECT a.expires_at FROM lecture_access a WHERE a.lecture_id=selected.id AND a.user_id=$1 AND a.expires_at>now()) expires_at`
     );
-  });
-}
-
-export async function listLectures(
-  actor: Actor,
-  search = '',
-  includeProposals = false,
-  onlyWithProtocols = false
-) {
-  bounded(search, 200, false);
-  return transaction(async (client) => {
-    const actual = await currentActor(client, actor);
-    requireCondition(
-      !includeProposals || actual.isAdmin,
-      403,
-      'admin_required',
-      'Administrator permission is required.'
-    );
-    return (
-      await client.query(lectureCatalogueSql, [
-        actor.id,
-        search,
-        includeProposals,
-        onlyWithProtocols,
-        'all'
-      ])
-    ).rows;
   });
 }
 
@@ -463,36 +423,42 @@ export async function listExaminers(actor: Actor) {
   });
 }
 
-async function createCatalogue(actor: Actor, table: 'lecture' | 'examiner', name: string) {
+export async function createLecture(
+  actor: Actor,
+  name: string,
+  input: { aliases?: string[]; examinerName?: string } = {}
+) {
   name = bounded(name, 200);
+  const rawAliases = input.aliases ?? [];
+  requireCondition(
+    Array.isArray(rawAliases) && rawAliases.length <= 30,
+    400,
+    'invalid_input',
+    'Invalid lecture aliases.'
+  );
+  const aliases = [...new Set(rawAliases.map((alias) => bounded(alias, 200)))];
+  const examinerName = input.examinerName?.trim() ? bounded(input.examinerName, 200) : null;
   return transaction(async (client) => {
     await currentActor(client, actor, true);
-    const row = (
+    const lecture = (
       await client.query(
-        `INSERT INTO ${table}(name,normalized_name) VALUES($1,$2) ON CONFLICT(normalized_name) DO NOTHING RETURNING id,name`,
-        [name, name.normalize('NFKC').toLocaleLowerCase('de-DE')]
+        `INSERT INTO lecture(name,normalized_name,aliases) VALUES($1,$2,$3)
+         ON CONFLICT(normalized_name) DO NOTHING RETURNING id,name`,
+        [name, name.normalize('NFKC').toLocaleLowerCase('de-DE'), aliases]
       )
     ).rows[0];
-    requireCondition(row, 409, 'catalogue_duplicate', 'This catalogue name already exists.');
-    await audit(client, actor.id, `${table}.created`, row.id);
-    return row;
+    requireCondition(lecture, 409, 'catalogue_duplicate', 'This catalogue name already exists.');
+    if (examinerName) {
+      const examiner = await resolveExaminerName(client, examinerName);
+      await client.query(
+        'INSERT INTO lecture_examiner(lecture_id,examiner_id,linked_by) VALUES($1,$2,$3)',
+        [lecture.id, examiner.id, actor.id]
+      );
+    }
+    await audit(client, actor.id, 'lecture.created', lecture.id, { name, aliases, examinerName });
+    return lecture;
   });
 }
-
-export const createLecture = (actor: Actor, name: string) =>
-  createCatalogue(actor, 'lecture', name);
-
-export const createExaminer = (actor: Actor, name: string) =>
-  createCatalogue(actor, 'examiner', name);
-
-const publishedProtocolsSql = `SELECT s.id,r.id revision_id,r.created_at,r.exam_date,r.term,r.remarks,e.name examiner,f.original_name,
-      ARRAY(SELECT l.name FROM revision_lecture rl2 JOIN lecture l ON l.id=rl2.lecture_id WHERE rl2.revision_id=r.id ORDER BY l.name) lectures,
-      EXISTS(SELECT 1 FROM revision_lecture rl3 JOIN lecture_access a ON a.lecture_id=rl3.lecture_id WHERE rl3.revision_id=r.id AND a.user_id=$2 AND a.expires_at>now()) has_access
-      FROM submission s JOIN submission_revision r ON r.id=s.published_revision_id JOIN stored_file f ON f.id=r.file_id LEFT JOIN examiner e ON e.id=r.examiner_id
-      WHERE s.visibility='published' AND s.files_deleted_at IS NULL AND f.deleted_at IS NULL AND f.safety_status='clean'
-      AND NOT EXISTS(SELECT 1 FROM revision_lecture other JOIN lecture l ON l.id=other.lecture_id WHERE other.revision_id=r.id AND l.approval_status<>'approved')
-      AND EXISTS(SELECT 1 FROM revision_lecture rl WHERE rl.revision_id=r.id AND rl.lecture_id=$1)
-      ORDER BY r.exam_date DESC NULLS LAST,r.created_at DESC,r.id`;
 
 async function requirePublishedLecture(client: PoolClient, lectureId: string) {
   requireCondition(
@@ -505,15 +471,6 @@ async function requirePublishedLecture(client: PoolClient, lectureId: string) {
     'not_found',
     'Lecture not found.'
   );
-}
-
-export async function listPublishedProtocols(actor: Actor, lectureId: string) {
-  requireId(lectureId);
-  return transaction(async (client) => {
-    await currentActor(client, actor);
-    await requirePublishedLecture(client, lectureId);
-    return (await client.query(publishedProtocolsSql, [lectureId, actor.id])).rows;
-  });
 }
 
 export async function listPublishedProtocolsPage(actor: Actor, lectureId: string, page = 1) {

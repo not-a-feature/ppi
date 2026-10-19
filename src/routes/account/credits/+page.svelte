@@ -1,23 +1,11 @@
 <script lang="ts">
-  import { feedbackText } from '$lib/i18n';
-  import { t, dateText } from '$lib/i18n';
+  import { feedbackText, entryLabel, t, dateText } from '$lib/i18n';
   import { page } from '$app/state';
   import Feedback from '$lib/components/Feedback.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import { namedAction } from '$lib/form-actions';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data, form } = $props();
-  let kinds: Record<string, string> = $derived({
-    activation: t(language, 'Startguthaben'),
-    contribution: t(language, 'Beitragsbelohnung'),
-    bonus: t(language, 'Zusätzliche Belohnung'),
-    purchase: t(language, 'Veranstaltungszugang'),
-    periodic_grant: t(language, 'Regelmäßige Gutschrift'),
-    manual_adjustment: t(language, 'Manuelle Anpassung'),
-    reversal: t(language, 'Korrektur'),
-    legacy_opening: t(language, 'Übernommenes Guthaben'),
-    token_request: t(language, 'Tokenanfrage')
-  });
 </script>
 
 <div class="page-head">
@@ -41,10 +29,10 @@
               >{#each data.dashboard.ledger as entry (entry.id)}<tr
                   ><td>{dateText(language, entry.created_at)}</td><td
                     >{#if entry.kind === 'purchase'}
-                      {entry.lecture_name ?? kinds.purchase}
+                      {entry.lecture_name ?? entryLabel(language, entry.kind)}
                     {:else}
-                      {kinds[entry.kind] ?? entry.kind}
-                      {#if entry.reason && feedbackText(language, entry.reason) !== kinds[entry.kind]}<br
+                      {entryLabel(language, entry.kind)}
+                      {#if entry.reason && feedbackText(language, entry.reason) !== entryLabel(language, entry.kind)}<br
                         /><small
                           >{entry.kind === 'manual_adjustment'
                             ? entry.reason

@@ -1,8 +1,8 @@
-import { text, type Language } from './i18n';
+import { t, type Language } from './i18n';
 
 export function termLabel(language: Language, term: string | null | undefined): string {
-  if (!term) return text(language, 'Nicht angegeben', 'Not specified');
-  if (/^SS\d{4}$/.test(term)) return text(language, 'Sommer ', 'Summer ') + term.slice(4);
+  if (!term) return t(language, 'Nicht angegeben');
+  if (/^SS\d{4}$/.test(term)) return t(language, 'Sommer ') + term.slice(4);
   if (/^WS\d{4}\/\d{2}$/.test(term)) return 'Winter ' + term.slice(4);
   return term;
 }
@@ -22,9 +22,4 @@ export function termOptions(now = new Date()): { value: string; label: string }[
 
 export function isValidTerm(value: string, now = new Date()): boolean {
   return termOptions(now).some((term) => term.value === value);
-}
-
-export function validateTerm(value: string, now = new Date()): string {
-  if (!isValidTerm(value, now)) throw new RangeError('Choose a valid semester.');
-  return value;
 }

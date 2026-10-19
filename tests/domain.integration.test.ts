@@ -12,6 +12,7 @@ const schema = `ppi_test_${randomUUID().replaceAll('-', '')}`;
 let adminPool: pg.Pool;
 let db: typeof import('../src/lib/server/db.js');
 let domain: typeof import('../src/lib/server/domain/index.js');
+let listAdminEntries: typeof import('../src/lib/server/domain/admin-lists').listAdminEntries;
 let admin: Actor;
 let fixtureNumber = 0;
 
@@ -86,7 +87,7 @@ async function review(
   });
 }
 async function balance(actor: Actor) {
-  return (await domain.getDashboard(actor)).balance;
+  return (await domain.getCreditsDashboard(actor)).balance;
 }
 
 describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
@@ -103,6 +104,7 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     process.env.DATABASE_URL = url.toString();
     db = await import('../src/lib/server/db.js');
     domain = await import('../src/lib/server/domain/index.js');
+    ({ listAdminEntries } = await import('../src/lib/server/domain/admin-lists'));
     for (const name of (await readdir(new URL('../migrations/', import.meta.url)))
       .filter((name) => name.endsWith('.sql'))
       .sort())
@@ -140,13 +142,43 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     ).rejects.toMatchObject({ code: 'admin_required' });
     await domain.setAccountStatus(admin, student.id, 'suspended');
     expect(await domain.getActor(student.id)).toBeNull();
-    await expect(domain.getDashboard(student)).rejects.toMatchObject({
+    await expect(domain.getCreditsDashboard(student)).rejects.toMatchObject({
       code: 'account_ineligible'
     });
     await expect(domain.setAdmin(admin, admin.id, false)).rejects.toMatchObject({
       code: 'last_admin'
     });
   });
+  it('creates lectures with initial aliases and an examiner scoped to that lecture', async () => {
+    const name = `Catalogue creation ${randomUUID()}`;
+    const alias = `Catalogue alias ${randomUUID()}`;
+    const examinerName = `Initial examiner ${randomUUID()}`;
+    const lecture = await domain.createLecture(admin, name, {
+      aliases: [alias, alias],
+      examinerName
+    });
+    expect((await domain.getLecture(admin, lecture.id)).aliases).toEqual([alias]);
+    expect(
+      (await domain.listLecturesPage(admin, { search: alias })).items.map((row) => row.id)
+    ).toContain(lecture.id);
+    expect((await domain.listLectureExaminers(admin, lecture.id)).map((row) => row.name)).toEqual([
+      examinerName
+    ]);
+    const other = await domain.createLecture(admin, `Separate catalogue ${randomUUID()}`);
+    expect(await domain.listLectureExaminers(admin, other.id)).toEqual([]);
+    const orphanName = `Uncommitted examiner ${randomUUID()}`;
+    await expect(
+      domain.createLecture(admin, name, { examinerName: orphanName })
+    ).rejects.toMatchObject({ code: 'catalogue_duplicate' });
+    expect(
+      (await db.pool.query('SELECT id FROM examiner WHERE name=$1', [orphanName])).rows
+    ).toEqual([]);
+    const student = await user();
+    await expect(
+      domain.createLecture(student, 'Unauthorized catalogue', { aliases: [alias], examinerName })
+    ).rejects.toMatchObject({ code: 'admin_required' });
+  });
+
   it('prevents concurrent overspending and repeated active-access charges', async () => {
     const student = await user();
     await domain.adjustCredits(
@@ -165,9 +197,9 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
     expect(await balance(student)).toBe(0);
-    const purchased = (await domain.getDashboard(student)).access[0];
+    const purchased = (await domain.getCreditsDashboard(student)).access[0];
     expect(
-      (await domain.getDashboard(student)).ledger.find((entry) => entry.kind === 'purchase')
+      (await domain.getCreditsDashboard(student)).ledger.find((entry) => entry.kind === 'purchase')
         .lecture_name
     ).toBe(purchased.name);
     const repeated = await domain.purchaseLectureAccess(
@@ -192,7 +224,7 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       );
     });
     expect(
-      (await domain.getDashboard(legacy)).ledger.find((entry) => entry.kind === 'purchase')
+      (await domain.getCreditsDashboard(legacy)).ledger.find((entry) => entry.kind === 'purchase')
         .lecture_name
     ).toBe(first.name);
   });
@@ -276,6 +308,55 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       ])
     ).rejects.toThrow('History records are immutable');
   });
+  it('assigns unique normalized download names and preserves them across retries and improvements', async () => {
+    const student = await user();
+    const lecture = await domain.createLecture(admin, `Filename ${randomUUID()}`);
+    const firstInput = {
+      ...input(lecture.id),
+      examDate: '2026-10-19'
+    };
+    const pdfInput = {
+      ...input(lecture.id),
+      examDate: '2026-10-19'
+    };
+    pdfInput.file.mediaType = 'application/pdf';
+    pdfInput.file.originalName = 'private-student-name.pdf';
+    const [first, second] = await Promise.all([
+      domain.submitProtocol(student, firstInput),
+      domain.submitProtocol(student, pdfInput)
+    ]);
+    const firstRevision = (await domain.getSubmission(student, first.submissionId)).revisions[0];
+    const secondRevision = (await domain.getSubmission(student, second.submissionId)).revisions[0];
+    const prefix = `${firstInput.term.replace('/', '-')}_2026-10-19_`;
+    expect(firstRevision.original_name).toMatch(/_[1-9]\d*\.txt$/);
+    expect(secondRevision.original_name).toMatch(/_[1-9]\d*\.pdf$/);
+    expect(firstRevision.original_name.startsWith(prefix)).toBe(true);
+    expect(secondRevision.original_name.startsWith(prefix)).toBe(true);
+    expect(firstRevision.original_name).not.toBe(secondRevision.original_name);
+    expect(secondRevision.original_name).not.toContain('private-student-name');
+    expect(await domain.submitProtocol(student, firstInput)).toEqual(first);
+    expect(
+      (await domain.getSubmission(student, first.submissionId)).revisions[0].original_name
+    ).toBe(firstRevision.original_name);
+    await domain.completeFileCheck({
+      fileId: firstRevision.file_id,
+      generation: 1,
+      status: 'clean',
+      detail: 'Test.'
+    });
+    expect((await domain.getDownload(admin, first.revisionId)).originalName).toBe(
+      firstRevision.original_name
+    );
+    await domain.reviseProtocol(student, first.submissionId, {
+      ...input(lecture.id),
+      examDate: '2020-01-01'
+    });
+    const improved = (await domain.getSubmission(student, first.submissionId)).revisions;
+    expect(improved[0].original_name.startsWith(prefix)).toBe(true);
+    expect(improved[0].original_name).not.toBe(firstRevision.original_name);
+    expect(improved[1].original_name).toBe(firstRevision.original_name);
+  });
+
   it('inherits the exam date across improvements and ignores replacement dates', async () => {
     const student = await user(),
       lecture = await domain.createLecture(admin, `Inherited date ${randomUUID()}`);
@@ -475,14 +556,16 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     };
     const report = await domain.reportContent(reporter, request);
     expect(await domain.reportContent(reporter, request)).toEqual(report);
-    await expect(domain.listContentReports(reporter)).rejects.toMatchObject({
+    await expect(listAdminEntries(reporter, 'reports')).rejects.toMatchObject({
       code: 'admin_required'
     });
     await expect(
       domain.resolveContentReport(reporter, report.id, 'Unauthorized resolution.')
     ).rejects.toMatchObject({ code: 'admin_required' });
     expect(
-      (await domain.listContentReports(admin)).find((item) => item.id === report.id).reporter_email
+      (await listAdminEntries(admin, 'reports', { search: report.id })).entries.find(
+        (item) => item.id === report.id
+      ).reporter_email
     ).toBe(reporter.email);
     await domain.resolveContentReport(
       admin,
@@ -496,9 +579,12 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       'published'
     );
     expect(
-      (await domain.getDashboard(reporter)).notifications.some(
-        (item) => item.event_key === `report:${report.id}`
-      )
+      (
+        await db.pool.query('SELECT id FROM notification WHERE user_id=$1 AND event_key=$2', [
+          reporter.id,
+          `report:${report.id}`
+        ])
+      ).rowCount === 1
     ).toBe(true);
   });
   it('reopens a rejected review on uploader reconsideration without another reward', async () => {
@@ -579,12 +665,20 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       (item) => item.name === proposedName
     );
     expect(proposed.approval_status).toBe('pending');
-    expect((await domain.listLectures(student)).some((item) => item.id === proposed.id)).toBe(
-      false
-    );
-    expect((await domain.listLectures(admin)).some((item) => item.id === proposed.id)).toBe(false);
     expect(
-      (await domain.listLectures(admin, '', true)).some((item) => item.id === proposed.id)
+      (await domain.listLecturesPage(student, { search: proposedName })).items.some(
+        (item) => item.id === proposed.id
+      )
+    ).toBe(false);
+    expect(
+      (await domain.listLecturesPage(admin, { search: proposedName })).items.some(
+        (item) => item.id === proposed.id
+      )
+    ).toBe(false);
+    expect(
+      (
+        await domain.listLecturesPage(admin, { search: proposedName, includeProposals: true })
+      ).items.some((item) => item.id === proposed.id)
     ).toBe(true);
     expect((await domain.listUploadLectures(reader)).some((item) => item.id === proposed.id)).toBe(
       false
@@ -596,7 +690,7 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     await expect(
       domain.purchaseLectureAccess(student, proposed.id, randomUUID())
     ).rejects.toMatchObject({ code: 'not_found' });
-    await expect(domain.listPublishedProtocols(reader, proposed.id)).rejects.toMatchObject({
+    await expect(domain.listPublishedProtocolsPage(reader, proposed.id)).rejects.toMatchObject({
       code: 'not_found'
     });
     await expect(
@@ -623,12 +717,18 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       domain.decideLecture(student, proposed.id, renamed.version, 'approved')
     ).rejects.toMatchObject({ code: 'admin_required' });
     await domain.decideLecture(admin, proposed.id, renamed.version, 'approved');
-    expect((await domain.listLectures(reader, proposedName)).map((item) => item.id)).toEqual([
-      proposed.id
-    ]);
-    expect(await domain.listLectures(reader, proposedName, false, true)).toHaveLength(0);
+    expect(
+      (await domain.listLecturesPage(reader, { search: proposedName })).items.map((item) => item.id)
+    ).toEqual([proposed.id]);
+    expect(
+      (await domain.listLecturesPage(reader, { search: proposedName, onlyWithProtocols: true }))
+        .items
+    ).toHaveLength(0);
     await review(submitted.revisionId, ready.version, 'none');
-    expect(await domain.listLectures(reader, proposedName, false, true)).toHaveLength(1);
+    expect(
+      (await domain.listLecturesPage(reader, { search: proposedName, onlyWithProtocols: true }))
+        .items
+    ).toHaveLength(1);
     const suggestions = await domain.listExaminerSuggestions(reader);
     expect(suggestions.find((item) => item.name === examinerName).lectureIds.sort()).toEqual(
       [lecture.id, proposed.id].sort()
@@ -640,15 +740,16 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     expect((await domain.getSubmission(student, same.submissionId)).revisions[0].examiner_id).toBe(
       own.revisions[0].examiner_id
     );
-    const approved = (await domain.listLectures(admin, '', true)).find(
-      (item) => item.id === proposed.id
-    );
+    const approved = (
+      await domain.listLecturesPage(admin, { search: proposedName, includeProposals: true })
+    ).items.find((item) => item.id === proposed.id);
+    assert(approved);
     await domain.purchaseLectureAccess(reader, lecture.id, randomUUID());
     await domain.decideLecture(admin, proposed.id, approved.version, 'rejected');
     await expect(domain.getDownload(reader, submitted.revisionId)).rejects.toMatchObject({
       code: 'not_found'
     });
-    expect(await domain.listPublishedProtocols(reader, lecture.id)).toHaveLength(0);
+    expect((await domain.listPublishedProtocolsPage(reader, lecture.id)).items).toHaveLength(0);
   });
   it('requires canonical semesters in the Berlin-year range without changing existing terms', async () => {
     const fixed = new Date('2026-12-31T23:30:00Z');
@@ -707,17 +808,20 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       })
     ).toBe(false);
     const retained = await domain.getSubmission(admin, first.submissionId);
-    expect(retained.revisions[0].original_name).toBe('dummy.txt');
+    expect(retained.revisions[0].original_name).toBe(own.revisions[0].original_name);
     expect(retained.revisions[0].file_deleted_at).toBeTruthy();
-    expect(await domain.listPublishedProtocols(student, lecture.id)).toHaveLength(0);
+    expect((await domain.listPublishedProtocolsPage(student, lecture.id)).items).toHaveLength(0);
     expect(
-      (await domain.listReviewQueue(admin)).some((item) => item.id === first.submissionId)
+      (await domain.listReviewQueuePage(admin, { search: first.submissionId })).entries.some(
+        (item) => item.id === first.submissionId
+      )
     ).toBe(false);
     expect(
-      (await domain.listReviewQueue(admin, true)).find((item) => item.id === first.submissionId)
-        .files_deleted_at
+      (
+        await domain.listReviewQueuePage(admin, { search: first.submissionId, includeAll: true })
+      ).entries.find((item) => item.id === first.submissionId).files_deleted_at
     ).toBeTruthy();
-    await expect(domain.listReviewQueue(student, true)).rejects.toMatchObject({
+    await expect(domain.listReviewQueuePage(student, { includeAll: true })).rejects.toMatchObject({
       code: 'admin_required'
     });
   });

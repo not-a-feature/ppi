@@ -1,21 +1,21 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { text } from '$lib/i18n';
+  import { t } from '$lib/i18n';
   let { data } = $props();
   let language = $derived(page.data.preferences.language);
   const metrics = [
-    { key: 'logins', de: 'Erfasste Anmeldungen', en: 'Recorded sign-ins', color: 'var(--teal)' },
-    { key: 'events', de: 'Ereignisse', en: 'Events', color: '#c98428' },
-    { key: 'submissions', de: 'Neue Einreichungen', en: 'New submissions', color: '#7978d2' },
-    { key: 'decisions', de: 'Prüfentscheidungen', en: 'Review decisions', color: '#cf6b7b' }
+    { key: 'logins', color: 'var(--teal)', label: 'Erfasste Anmeldungen' },
+    { key: 'events', color: '#c98428', label: 'Ereignisse' },
+    { key: 'submissions', color: '#7978d2', label: 'Neue Einreichungen' },
+    { key: 'decisions', color: '#cf6b7b', label: 'Prüfentscheidungen' }
   ] as const;
   let selected = $state<string[]>(['logins', 'events']);
   const ranges = [
-    { value: '30d', de: '30d', en: '30d' },
-    { value: '6m', de: '6m', en: '6m' },
-    { value: '1y', de: '1 Jahr', en: '1 year' },
-    { value: 'max', de: 'Max', en: 'Max' }
-  ];
+    { value: '30d', label: '30d' },
+    { value: '6m', label: '6m' },
+    { value: '1y', label: '1 Jahr' },
+    { value: 'max', label: 'Max' }
+  ] as const;
   let visible = $derived(metrics.filter((metric) => selected.includes(metric.key)));
   let maximum = $derived(
     Math.max(
@@ -25,10 +25,10 @@
   );
   let granularity = $derived(
     data.statistics.granularity === 'year'
-      ? text(language, 'Jährlich', 'Yearly')
+      ? t(language, 'Jährlich')
       : data.statistics.granularity === 'month'
-        ? text(language, 'Monatlich', 'Monthly')
-        : text(language, 'Täglich', 'Daily')
+        ? t(language, 'Monatlich')
+        : t(language, 'Täglich')
   );
   function x(index: number) {
     return 50 + (index / Math.max(1, data.statistics.series.length - 1)) * 850;
@@ -47,45 +47,40 @@
 
 <div class="page-head">
   <div>
-    <h1>{text(language, 'Statistik', 'Statistics')}</h1>
+    <h1>{t(language, 'Statistik')}</h1>
     <p>{data.statistics.startDate} – {data.statistics.endDate} · Europe/Berlin</p>
   </div>
-  <nav class="inline-form" aria-label={text(language, 'Zeitraum', 'Period')}>
+  <nav class="inline-form" aria-label={t(language, 'Zeitraum')}>
     {#each ranges as range}<a
         href={`/admin/statistics?range=${range.value}`}
         class={data.statistics.range === range.value ? 'button' : 'button secondary'}
         aria-current={data.statistics.range === range.value ? 'page' : undefined}
-        >{text(language, range.de, range.en)}</a
+        >{t(language, range.label)}</a
       >{/each}
   </nav>
 </div>
 <div class="grid" style="margin-bottom:1.5rem">
   {#each metrics as metric}<section class="card">
-      <p class="eyebrow">{text(language, metric.de, metric.en)}</p>
+      <p class="eyebrow">{t(language, metric.label)}</p>
       <div class="metric">{data.statistics.totals[metric.key]}</div>
     </section>{/each}
 </div>
 <section class="card">
-  <h2>{text(language, 'Zeitverlauf', 'Activity over time')}</h2>
+  <h2>{t(language, 'Zeitverlauf')}</h2>
   <fieldset class="series-labels">
-    <legend class="sr-only">{text(language, 'Datenreihen anzeigen', 'Show series')}</legend
+    <legend class="sr-only">{t(language, 'Datenreihen anzeigen')}</legend
     >{#each metrics as metric}<label style:--series-color={metric.color}
         ><input type="checkbox" bind:group={selected} value={metric.key} /><span
           class="series-swatch"
-        ></span>{text(language, metric.de, metric.en)}</label
+        ></span>{t(language, metric.label)}</label
       >{/each}
   </fieldset>
   <div class="chart-scroll">
-    <svg
-      viewBox="0 0 930 320"
-      role="img"
-      aria-label={text(language, 'Ereignisse im Zeitverlauf', 'Events over time')}
-    >
-      <title>{text(language, 'Ereignisse im Zeitverlauf', 'Events over time')}</title><desc
-        >{text(
+    <svg viewBox="0 0 930 320" role="img" aria-label={t(language, 'Ereignisse im Zeitverlauf')}>
+      <title>{t(language, 'Ereignisse im Zeitverlauf')}</title><desc
+        >{t(
           language,
-          'Linien zeigen die ausgewählten Datenreihen. Die Werte sind auch als Tabelle verfügbar.',
-          'Lines show the selected series. Values are also available in the data table.'
+          'Linien zeigen die ausgewählten Datenreihen. Die Werte sind auch als Tabelle verfügbar.'
         )}</desc
       >
       {#each [0, 0.5, 1] as fraction}<line
@@ -114,22 +109,19 @@
             cy={y(point[metric.key])}
             r="2.6"
             fill={metric.color}
-            ><title>{point.day} · {text(language, metric.de, metric.en)}: {point[metric.key]}</title
-            ></circle
+            ><title>{point.day} · {t(language, metric.label)}: {point[metric.key]}</title></circle
           >{/each}{/each}
-      <text x="475" y="309" text-anchor="middle"
-        >{text(language, 'Datum', 'Date')} · {granularity}</text
-      >
+      <text x="475" y="309" text-anchor="middle">{t(language, 'Datum')} · {granularity}</text>
     </svg>
   </div>
   <details style="margin-top:1rem">
-    <summary>{text(language, 'Daten als Tabelle', 'View data table')}</summary>
+    <summary>{t(language, 'Daten als Tabelle')}</summary>
     <div class="table-scroll">
       <table>
         <thead
           ><tr
-            ><th>{text(language, 'Datum', 'Date')}</th>{#each metrics as metric}<th
-                >{text(language, metric.de, metric.en)}</th
+            ><th>{t(language, 'Datum')}</th>{#each metrics as metric}<th
+                >{t(language, metric.label)}</th
               >{/each}</tr
           ></thead
         ><tbody

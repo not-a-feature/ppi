@@ -35,14 +35,20 @@
 </div>
 <section class="card">
   <h2>{t(language, 'Als Nächstes prüfen')}</h2>
-  {#each data.reviews as item}<div class="list-row">
-      <div>
-        <h3><a href="/admin/review/{item.id}">{item.original_name}</a></h3>
+  {#each data.reviews as item, index}<div class="list-row">
+      <div class="review-entry-label">
+        <h3>
+          <a
+            class="review-entry-title"
+            href="/admin/review/{item.id}"
+            title={item.lecture_names.join(', ')}>{index + 1}. {item.lecture_names.join(', ')}</a
+          >
+        </h3>
         <p class="hint">
           {t(language, 'Version')}
           {item.revision_number}, {dateText(language, item.created_at)}
         </p>
       </div>
-      <Status value={item.review_state} />
+      <div class="review-entry-status"><Status value={item.review_state} /></div>
     </div>{:else}<p class="muted">{t(language, 'Keine offenen Einreichungen.')}</p>{/each}
 </section>

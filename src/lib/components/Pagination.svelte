@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page as currentPage } from '$app/state';
-  import { text } from '$lib/i18n';
+  import { t } from '$lib/i18n';
   let { page, total, pageSize }: { page: number; total: number; pageSize: number } = $props();
   let language = $derived(currentPage.data.preferences?.language ?? 'de');
   let pages = $derived(Math.max(1, Math.ceil(total / pageSize)));
@@ -14,18 +14,18 @@
   }
 </script>
 
-<nav class="pagination" aria-label={text(language, 'Seitennavigation', 'Pagination')}>
+<nav class="pagination" aria-label={t(language, 'Seitennavigation')}>
   <span
     >{total}
-    {text(language, 'Einträge', 'entries')} · {text(language, 'Seite', 'Page')}
+    {t(language, 'Einträge')} · {t(language, 'Seite')}
     {page} / {pages}</span
   >
   <div class="actions">
     {#if page > 1}<a class="button secondary" href={href(page - 1)} rel="prev"
-        >{text(language, 'Zurück', 'Previous')}</a
+        >{t(language, 'Zurück')}</a
       >{/if}
     {#if page < pages}<a class="button secondary" href={href(page + 1)} rel="next"
-        >{text(language, 'Weiter', 'Next')}</a
+        >{t(language, 'Weiter')}</a
       >{/if}
   </div>
 </nav>

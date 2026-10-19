@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/state';
-  import { text } from '$lib/i18n';
+  import { t } from '$lib/i18n';
   let { data, children } = $props();
   let language = $derived(data.preferences.language);
   $effect(() => {
@@ -11,39 +11,34 @@
 </script>
 
 <svelte:head>
-  <title>{text(language, 'PPI · Prüfungsprotokolle', 'PPI · Exam protocols')}</title>
+  <title>{t(language, 'PPI · Prüfungsprotokolle')}</title>
   <meta
     name="description"
-    content={text(
+    content={t(
       language,
-      'Prüfungsprotokolle der Fachschaft Informatik Tübingen. Erfahrungen finden und eigene Protokolle teilen.',
-      'Exam protocols from the computer science student council in Tübingen. Find exam experiences and share your own.'
+      'Prüfungsprotokolle der Fachschaft Informatik Tübingen. Erfahrungen finden und eigene Protokolle teilen.'
     )}
   />
   <link rel="icon" type="image/png" href="/brand/ppi-logo.png" />
 </svelte:head>
-<a href="#main" class="skip">{text(language, 'Zum Inhalt', 'Skip to content')}</a>
+<a href="#main" class="skip">{t(language, 'Zum Inhalt')}</a>
 <header class="site-header">
   <div class="nav-wrap">
-    <a
-      href="/lectures"
-      class="brand"
-      aria-label={text(language, 'PPI – zum Katalog', 'PPI – open catalogue')}
-    >
+    <a href="/lectures" class="brand" aria-label={t(language, 'PPI – zum Katalog')}>
       <span class="brand-product">
         <img class="ppi-logo" src="/brand/ppi-logo.png" alt="PPI" width="1424" height="512" />
-        <span>{text(language, 'Prüfungsprotokolle', 'Exam protocols')}</span>
+        <span>{t(language, 'Prüfungsprotokolle')}</span>
       </span>
     </a>
-    <nav aria-label={text(language, 'Hauptnavigation', 'Main navigation')}>
+    <nav aria-label={t(language, 'Hauptnavigation')}>
       {#if data.actor}
         <a
           aria-current={page.url.pathname.startsWith('/lectures') ? 'page' : undefined}
-          href="/lectures">{text(language, 'Katalog', 'Catalogue')}</a
+          href="/lectures">{t(language, 'Katalog')}</a
         >
         <a
           aria-current={page.url.pathname.startsWith('/submissions') ? 'page' : undefined}
-          href="/submissions">{text(language, 'Meine Beiträge', 'My contributions')}</a
+          href="/submissions">{t(language, 'navigation.contributions')}</a
         >
         <a
           aria-current={page.url.pathname.startsWith('/account/credits') ? 'page' : undefined}
@@ -51,32 +46,23 @@
         >
         {#if data.actor.isAdmin}<a
             aria-current={page.url.pathname.startsWith('/admin') ? 'page' : undefined}
-            href="/admin">{text(language, 'Verwaltung', 'Administration')}</a
+            href="/admin">{t(language, 'Verwaltung')}</a
           >{/if}
         <a aria-current={page.url.pathname === '/account' ? 'page' : undefined} href="/account"
-          >{text(language, 'Konto', 'Account')}</a
+          >{t(language, 'Konto')}</a
         >
-        <a href="/upload" class="nav-upload"
-          >{text(language, 'Protokoll hochladen', 'Upload protocol')}</a
-        >
+        <a href="/upload" class="nav-upload">{t(language, 'Protokoll hochladen')}</a>
       {:else}
-        <a href="/login">{text(language, 'Anmelden', 'Sign in')}</a>
-        <a class="nav-upload" href="/register"
-          >{text(language, 'Konto erstellen', 'Create account')}</a
-        >
+        <a href="/login">{t(language, 'Anmelden')}</a>
+        <a class="nav-upload" href="/register">{t(language, 'Konto erstellen')}</a>
       {/if}
     </nav>
   </div>
 </header>
 <main id="main">{@render children()}</main>
 <footer class="site-footer">
-  <span
-    >{text(language, 'Fachschaft Informatik', 'Computer science student council')}<br />{text(
-      language,
-      'Universität Tübingen',
-      'University of Tübingen'
-    )}</span
-  >
+  <span>{t(language, 'Fachschaft Informatik Tübingen')}</span>
+  <a href="/impressum">{t(language, 'Impressum')}</a>
 </footer>
 
 <style>

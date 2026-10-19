@@ -1,5 +1,11 @@
 import { type PoolClient } from 'pg';
 import { createHash } from 'node:crypto';
+import { studentEmailPattern as zxEmail } from '../auth/policy.js';
+
+export {
+  studentEmailPattern as zxEmail,
+  studentIdentifierPattern as zxId
+} from '../auth/policy.js';
 
 export type Actor = { id: string; email: string; isAdmin: boolean };
 
@@ -21,10 +27,6 @@ export function requireCondition(
 ): asserts condition {
   if (!condition) throw new DomainError(status, code, message);
 }
-
-export const zxEmail = /^zx[a-z]{3}[0-9]{2}@student\.uni-tuebingen\.de$(?![\s\S])/;
-
-export const zxId = /^zx[a-z]{3}[0-9]{2}$/;
 
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { text, t, dateText, queueLabel, statusLabel } from '$lib/i18n';
+  import { t, dateText, queueLabel, statusLabel } from '$lib/i18n';
   import { page } from '$app/state';
   import { namedAction } from '$lib/form-actions';
   import Status from '$lib/components/Status.svelte';
   import Feedback from '$lib/components/Feedback.svelte';
+  import SearchForm from '$lib/components/SearchForm.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   let { data, form } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
@@ -11,25 +12,17 @@
 
 <div class="page-head"><h1>{t(language, 'Verarbeitung')}</h1></div>
 <Feedback {form} />
-<form method="GET" class="search" style="margin-bottom:1.5rem">
-  <label for="q"
-    >{text(language, 'Suchen', 'Search')}<input
-      id="q"
-      name="q"
-      type="search"
-      maxlength="200"
-      value={data.q}
-    /></label
-  ><label
+<SearchForm query={data.q}>
+  <label
     >{t(language, 'Status')}<select name="state"
-      ><option value="">{text(language, 'Alle', 'All')}</option
+      ><option value="">{t(language, 'Alle')}</option
       >{#each ['created', 'retry', 'active', 'completed', 'cancelled', 'failed'] as state}<option
           value={state}
           selected={data.state === state}>{statusLabel(language, state)}</option
         >{/each}</select
     ></label
-  ><button class="secondary">{text(language, 'Suchen', 'Search')}</button>
-</form>
+  >
+</SearchForm>
 <section class="card" style="margin-bottom:1.5rem">
   <div class="split">
     <h2>{t(language, 'Worker')}</h2>

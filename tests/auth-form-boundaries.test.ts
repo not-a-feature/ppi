@@ -15,7 +15,7 @@ vi.mock('$lib/server/auth/session', () => ({ currentAccount: vi.fn() }));
 vi.mock('$lib/server/auth/rate-limit', () => ({ allowAuthForm: doubles.allowAuthForm }));
 vi.mock('$lib/server/auth/client-address', () => import('../src/lib/server/auth/client-address'));
 vi.mock('$lib/server/upload-concurrency', () => import('../src/lib/server/upload-concurrency'));
-vi.mock('$lib/server/preferences', () => ({ defaultPreferences: {}, getPreferences: vi.fn() }));
+vi.mock('$lib/server/preferences', () => ({ defaultPreferences: {} }));
 vi.mock('better-auth/svelte-kit', () => ({
   svelteKitHandler: ({
     event,

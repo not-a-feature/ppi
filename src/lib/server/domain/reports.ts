@@ -10,14 +10,6 @@ import {
 } from './shared.js';
 import { transaction } from '../db.js';
 
-export async function listAuditEvents(actor: Actor) {
-  return transaction(async (client) => {
-    await currentActor(client, actor, true);
-    return (await client.query('SELECT * FROM audit_event ORDER BY created_at DESC LIMIT 100'))
-      .rows;
-  });
-}
-
 export type ContentReportInput = {
   lectureId?: string;
   submissionId?: string;
@@ -84,16 +76,6 @@ export async function reportContent(actor: Actor, input: ContentReportInput) {
       });
       return report;
     });
-  });
-}
-
-export async function listContentReports(actor: Actor) {
-  return transaction(async (client) => {
-    await currentActor(client, actor, true);
-    return (
-      await client.query(`SELECT c.*,u.email reporter_email,l.name lecture_name FROM content_report c JOIN "user" u ON u.id=c.reporter_id
-    LEFT JOIN lecture l ON l.id=c.lecture_id ORDER BY c.created_at DESC LIMIT 100`)
-    ).rows;
   });
 }
 
