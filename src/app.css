@@ -408,12 +408,19 @@ th {
 .admin-tabs {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
   margin-bottom: 36px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
 }
 .admin-tabs a {
+  flex: none;
+  white-space: nowrap;
+  min-height: 44px;
   padding: 7px 12px;
   border-radius: 4px;
   color: var(--muted);

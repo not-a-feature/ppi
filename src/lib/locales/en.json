@@ -838,5 +838,8 @@
   "Registriert": "Registered",
   "Keine Protokolle vorhanden.": "No protocols.",
   "Keine Zugänge vorhanden.": "No lecture access.",
-  "Das einreichende Konto kann keine Tokens erhalten.": "The uploader's account cannot receive tokens."
+  "Das einreichende Konto kann keine Tokens erhalten.": "The uploader's account cannot receive tokens.",
+  "Menü": "Menu",
+  "Navigation öffnen": "Open navigation",
+  "Navigation schließen": "Close navigation"
 }

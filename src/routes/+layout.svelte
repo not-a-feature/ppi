@@ -1,9 +1,15 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/state';
+  import { afterNavigate } from '$app/navigation';
   import { t } from '$lib/i18n';
   let { data, children } = $props();
   let language = $derived(data.preferences.language);
+  let menuOpen = $state(false);
+  let menuButton: HTMLButtonElement;
+  afterNavigate(() => {
+    menuOpen = false;
+  });
   $effect(() => {
     document.documentElement.lang = language;
     document.documentElement.dataset.theme = data.preferences.theme;
@@ -21,6 +27,14 @@
   />
 </svelte:head>
 <a href="#main" class="skip">{t(language, 'Zum Inhalt')}</a>
+<svelte:window
+  onkeydown={(event) => {
+    if (event.key === 'Escape' && menuOpen) {
+      menuOpen = false;
+      menuButton.focus();
+    }
+  }}
+/>
 <header class="site-header">
   <div class="nav-wrap">
     <a href="/lectures" class="brand" aria-label={t(language, 'PPI – zum Katalog')}>
@@ -29,7 +43,36 @@
         <span>{t(language, 'Prüfungsprotokolle')}</span>
       </span>
     </a>
-    <nav aria-label={t(language, 'Hauptnavigation')}>
+    <button
+      bind:this={menuButton}
+      type="button"
+      class="menu-toggle"
+      aria-controls="primary-navigation"
+      aria-expanded={menuOpen}
+      aria-label={t(language, menuOpen ? 'Navigation schließen' : 'Navigation öffnen')}
+      onclick={() => {
+        menuOpen = !menuOpen;
+      }}
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d={menuOpen ? 'M6 6l12 12M6 18L18 6' : 'M4 6h16M4 12h16M4 18h16'} />
+      </svg>
+      {t(language, 'Menü')}
+    </button>
+    <nav
+      id="primary-navigation"
+      class="primary-nav"
+      class:menu-open={menuOpen}
+      aria-label={t(language, 'Hauptnavigation')}
+    >
       {#if data.actor}
         <a
           aria-current={page.url.pathname.startsWith('/lectures') ? 'page' : undefined}
@@ -84,6 +127,18 @@
     align-items: center;
     justify-content: space-between;
     gap: 36px;
+  }
+  .menu-toggle {
+    display: none;
+    background: transparent;
+    border-color: #7676bb;
+    color: white;
+    min-height: 44px;
+    padding: 9px 12px;
+  }
+  .menu-toggle:hover {
+    background: #ffffff12;
+    filter: none;
   }
   .brand {
     display: flex;
@@ -217,42 +272,47 @@
       margin-right: 40px;
     }
   }
-  @media (max-width: 1080px) {
+  @media (max-width: 960px) {
     .nav-wrap {
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0 24px;
+    }
+    .menu-toggle {
+      display: inline-flex;
+    }
+    .primary-nav {
+      display: none;
+      grid-column: 1 / -1;
+      align-items: stretch;
       flex-direction: column;
-      gap: 20px;
+      gap: 4px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #ffffff40;
     }
-    nav {
-      width: 100%;
-      gap: 24px;
-      flex-wrap: wrap;
+    .primary-nav.menu-open {
+      display: flex;
     }
-    nav .nav-upload {
-      margin-left: auto;
+    .primary-nav a {
+      min-height: 44px;
+      padding: 11px 12px;
+    }
+    .primary-nav .nav-upload {
+      margin-top: 8px;
+      text-align: center;
     }
   }
   @media (max-width: 640px) {
     .nav-wrap {
       padding: 23px 22px 18px;
-      gap: 20px;
+      gap: 0 16px;
     }
     .brand-product {
       gap: 5px;
     }
     .ppi-logo {
       width: 85px;
-    }
-    nav {
-      gap: 7px 20px;
-      font-size: 13px;
-    }
-    nav a {
-      padding: 7px 0;
-    }
-    nav .nav-upload {
-      margin-left: 0;
-      padding: 8px 12px;
     }
     main {
       margin: 0 22px;
