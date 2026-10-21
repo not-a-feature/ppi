@@ -825,5 +825,18 @@
   "Alle 6 Monate": "Alle 6 Monate",
   "Am 1. des Monats um 03:00 Uhr (Europe/Berlin).": "Am 1. des Monats um 03:00 Uhr (Europe/Berlin).",
   "Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.": "Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.",
-  "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).": "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober)."
+  "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).": "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).",
+  "Konto löschen": "Konto löschen",
+  "Konto endgültig löschen": "Konto endgültig löschen",
+  "Das Konto wurde gelöscht.": "Das Konto wurde gelöscht.",
+  "Zugangsdaten und Profilangaben werden sofort entfernt. Protokolle und Buchungen bleiben ohne dein Anmeldekonto erhalten. Die Löschung kann nicht rückgängig gemacht werden.": "Zugangsdaten und Profilangaben werden sofort entfernt. Protokolle und Buchungen bleiben ohne dein Anmeldekonto erhalten. Die Löschung kann nicht rückgängig gemacht werden.",
+  "Rolle": "Rolle",
+  "Studierende": "Studierende",
+  "Letzte Anmeldung": "Letzte Anmeldung",
+  "Noch nie": "Noch nie",
+  "Beiträge und Zugänge": "Beiträge und Zugänge",
+  "Registriert": "Registriert",
+  "Keine Protokolle vorhanden.": "Keine Protokolle vorhanden.",
+  "Keine Zugänge vorhanden.": "Keine Zugänge vorhanden.",
+  "Das einreichende Konto kann keine Tokens erhalten.": "Das einreichende Konto kann keine Tokens erhalten."
 }

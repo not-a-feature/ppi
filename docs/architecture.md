@@ -18,9 +18,11 @@ Routes call ordinary domain functions. SQL uses node-postgres parameters and exp
 
 ## Accounts and access
 
-Every login account, including administrators, needs a verified `zx[a-z]{3}[0-9]{2}@student.uni-tuebingen.de` address. An administrator can set another eligible account's admin flag. The initial administrator uses `scripts/bootstrap-admin.ts`. Suspension and deletion requests revoke access; contributed protocols remain.
+Every login account, including administrators, needs a verified `zx[a-z]{3}[0-9]{2}@student.uni-tuebingen.de` address. An administrator can set another eligible account's admin flag. The initial administrator uses `scripts/bootstrap-admin.ts`. Suspension revokes access. Confirmed voluntary deletion immediately removes credentials and identifying profile fields while preserving contributed protocols and transaction history. The last active administrator cannot delete their account.
 
 A monthly worker job removes credentials and identifying profile fields after two years without a login, using registration age when no login is recorded. It preserves protocol ownership, ledger entries and audit references through a non-login account record. The last active administrator is protected. Login timestamps are stored separately from retained audit logs. Administrators can disable cleanup or choose three- or six-month intervals.
+
+The scheduled cleanup also completes deletion requests left pending by earlier versions. Retained submissions from deleted uploaders can be reviewed and published without issuing new rewards to those accounts.
 
 Permissions are checked on the server against current account state. Private files are served through authorised endpoints. Students need current lecture access; multi-lecture protocols require access to any assigned lecture. Administrator review access is audited. Internal user notes and extracted document text stay out of student responses.
 
@@ -49,5 +51,7 @@ The worker dispatches durable outbox entries into pg-boss and runs independent q
 PDF extraction runs in a bounded child process. OCR processes only image pages without extractable text; searchable pages and blank pages skip it. Original files remain immutable, and OCR derivatives are tied to the safety generation. Late results cannot replace newer checks. Downloads and ZIP members carry the student's zx ID and Berlin download date; administrator previews stay unmarked.
 
 ZIP preparation runs after purchase and reports progress on the lecture page. Access, publication and file safety are checked again on download. ZIPs expire after one hour or at the next Berlin midnight, whichever comes first.
+
+ZIP downloads use the lecture name and include `index.json` with protocol numbers, filenames, examiners, lectures, semesters, exam dates and upload dates. Lecture renames invalidate affected queued and ready archives, including protocols shared across lectures. Account administration includes unverified registrations, local role/status filters, last login and links to each account's submissions and access grants.
 
 See [operations](operations.md) for limits, deployment and checks, and [migration](migration.md) for cutover and remaining legacy gaps.

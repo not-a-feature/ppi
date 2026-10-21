@@ -12,9 +12,9 @@ export function admin(locals: App.Locals): Actor {
 }
 export const field = (form: FormData, key: string) => String(form.get(key) ?? '').trim();
 const errors: Record<string, string> = {
-  stale_metadata:'Die Metadaten wurden inzwischen geändert. Bitte die Seite neu laden.',
-  invalid_lectures:'Bitte zwischen einer und zwanzig Veranstaltungen auswählen.',
-  invalid_examiners:'Bitte höchstens zwanzig unterschiedliche prüfende Personen angeben.',
+  stale_metadata: 'Die Metadaten wurden inzwischen geändert. Bitte die Seite neu laden.',
+  invalid_lectures: 'Bitte zwischen einer und zwanzig Veranstaltungen auswählen.',
+  invalid_examiners: 'Bitte höchstens zwanzig unterschiedliche prüfende Personen angeben.',
   insufficient_credits:
     'Dein Guthaben reicht für diesen Zugang nicht aus. Du kannst ein Protokoll beitragen oder Tokens anfragen.',
   stale_review:
@@ -36,7 +36,7 @@ const errors: Record<string, string> = {
   improvement_unrewarded: 'Verbesserungen erhalten keine weiteren Tokens.',
   invalid_policy:
     'Bitte die Tokenbeträge und Zugangsdauer prüfen. Die ausgezeichnete Belohnung muss mindestens der Standardbelohnung entsprechen.',
-  last_admin: 'Das letzte aktive Administratorkonto kann nicht gesperrt oder herabgestuft werden.',
+  last_admin: 'Das letzte aktive Administratorkonto kann nicht entfernt werden.',
   stale_policy:
     'Die Tokenregeln wurden inzwischen geändert. Bitte die Seite neu laden und die Vergabe erneut prüfen.',
   stale_recipients: 'Die berechtigten Empfänger haben sich geändert. Bitte die Seite neu laden.',

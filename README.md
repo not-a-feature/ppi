@@ -23,6 +23,8 @@ Set a random `BETTER_AUTH_SECRET` in `.env` first. Open http://localhost:5173; l
 
 Run `npm run check`, `npm test` and `npm run build`. Database tests require a disposable PostgreSQL database in `TEST_DATABASE_URL`.
 
+For browser regressions, install Chromium with `npx playwright install chromium`, build with `npm run build`, then run `npm run test:e2e` with the same `TEST_DATABASE_URL`. Tests use a temporary schema and files, capture email locally, and supply synthetic safety results without sending mail or running a virus scanner.
+
 This is a work in progress. Production setup and the legacy import are still pending. See [architecture](docs/architecture.md), [operations](docs/operations.md) and [migration](docs/migration.md).
 
 Licensed under [EUPL 1.2](LICENSE). Legacy asset attribution is in [NOTICE](NOTICE).

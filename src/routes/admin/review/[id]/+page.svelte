@@ -37,21 +37,26 @@
       outcome === 'rejected' ||
       (outcome === 'accepted' && acceptanceAvailable)
   );
-  let reward = $state(
-    untrack(
-      () =>
-        (validOutcome ? form?.values?.reward : undefined) ??
-        (outcome === 'accepted' &&
-        data.revision.revision_number === 1 &&
-        !data.submission.rewardAllocation
-          ? 'base'
-          : 'none')
-    )
+  let rewardEligible = $derived(
+    data.basePreview.recipientIds.includes(data.submission.uploader_id)
   );
+  function initialReward() {
+    if (!rewardEligible) return 'none';
+    return (
+      (validOutcome ? form?.values?.reward : undefined) ??
+      (outcome === 'accepted' &&
+      data.revision.revision_number === 1 &&
+      !data.submission.rewardAllocation
+        ? 'base'
+        : 'none')
+    );
+  }
+  let reward = $state(untrack(initialReward));
   let internalNote = $state(untrack(() => form?.values?.internalNote ?? ''));
   let previousOutcome = $state(untrack(() => outcome));
   let rewardDisabled = $derived(
-    data.revision.revision_number > 1 ||
+    !rewardEligible ||
+      data.revision.revision_number > 1 ||
       !!data.submission.rewardAllocation ||
       outcome === 'changes_requested' ||
       !validOutcome
@@ -59,6 +64,7 @@
   $effect(() => {
     if (outcome !== previousOutcome) {
       reward =
+        rewardEligible &&
         outcome === 'accepted' &&
         data.revision.revision_number === 1 &&
         !data.submission.rewardAllocation
@@ -118,13 +124,7 @@
         metadataLectureIds = data.revision.lecture_ids;
         outcome = initialOutcome();
         previousOutcome = outcome;
-        reward =
-          (validOutcome ? form?.values?.reward : undefined) ??
-          (outcome === 'accepted' &&
-          data.revision.revision_number === 1 &&
-          !data.submission.rewardAllocation
-            ? 'base'
-            : 'none');
+        reward = initialReward();
         publicFeedback =
           (form?.values?.outcome === outcome ? form.values.publicFeedback : undefined) ??
           standardFeedback(outcome, language);
@@ -465,12 +465,14 @@
           >{#if rewardDisabled}<input
               type="hidden"
               name="reward"
-              value={form?.requiresRefresh ? reward : 'none'}
+              value={form?.requiresRefresh && rewardEligible ? reward : 'none'}
             />
             {#if !data.submission.rewardAllocation && validOutcome}<p class="hint">
-                {data.revision.revision_number > 1
-                  ? t(language, 'Verbesserungen erhalten keine weiteren Tokens.')
-                  : t(language, 'Bei erbetener Überarbeitung werden keine Tokens vergeben.')}
+                {!rewardEligible
+                  ? t(language, 'Das einreichende Konto kann keine Tokens erhalten.')
+                  : data.revision.revision_number > 1
+                    ? t(language, 'Verbesserungen erhalten keine weiteren Tokens.')
+                    : t(language, 'Bei erbetener Überarbeitung werden keine Tokens vergeben.')}
               </p>{/if}{/if}
           {#if data.submission.rewardAllocation}<div class="notice">
               {t(

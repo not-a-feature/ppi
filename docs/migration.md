@@ -57,10 +57,6 @@ Before the new application accepts writes, rollback can restore old routing. Aft
 
 Source comparison on 19 October 2026 found these gaps. Confirm production requirements before implementing them.
 
-- Account links to the user's contributions/access grants and a latest-sign-in field (`userslist.php`).
-- Unverified registrations and dedicated role/status filters in account administration.
-- Completion of voluntary account-deletion requests after retention rules are agreed (`RecurringTasksSystem.php`, `RecurringTasksDao.php`). Inactive-account cleanup is implemented; submitted protocols survive removal.
-- A lecture-based ZIP filename and archive index with upload dates and examiners (`download.php`).
 - Audit retention/export policy; do not copy the old log-pruning routine without deciding what must be retained.
 
 User notes, audited protocol metadata corrections and personalised download watermarks are implemented. Required zx administrator accounts, unrewarded improvements, immutable revision files and ledger-based token changes are intentional differences.

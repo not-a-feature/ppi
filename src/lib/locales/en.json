@@ -825,5 +825,18 @@
   "Alle 6 Monate": "Every 6 months",
   "Am 1. des Monats um 03:00 Uhr (Europe/Berlin).": "On the first of the month at 03:00 (Europe/Berlin).",
   "Nach zwei Jahren ohne Anmeldung werden Zugangsdaten und Profilangaben entfernt. Ohne Anmeldung zählt das Registrierungsdatum. Protokolle und Buchungen bleiben erhalten; das letzte aktive Adminkonto bleibt geschützt.": "After two years without a login, credentials and profile details are removed. For accounts that have never logged in, registration age is used. Protocols and transactions remain; the last active administrator is protected.",
-  "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).": "Example: 0 0 1 4,10 * (1 April and 1 October)."
+  "Beispiel: 0 0 1 4,10 * (1. April und 1. Oktober).": "Example: 0 0 1 4,10 * (1 April and 1 October).",
+  "Konto löschen": "Delete account",
+  "Konto endgültig löschen": "Permanently delete account",
+  "Das Konto wurde gelöscht.": "Account deleted.",
+  "Zugangsdaten und Profilangaben werden sofort entfernt. Protokolle und Buchungen bleiben ohne dein Anmeldekonto erhalten. Die Löschung kann nicht rückgängig gemacht werden.": "Credentials and profile details are removed immediately. Protocols and transactions remain without your login identity. Deletion cannot be undone.",
+  "Rolle": "Role",
+  "Studierende": "Students",
+  "Letzte Anmeldung": "Last login",
+  "Noch nie": "Never",
+  "Beiträge und Zugänge": "Contributions and access",
+  "Registriert": "Registered",
+  "Keine Protokolle vorhanden.": "No protocols.",
+  "Keine Zugänge vorhanden.": "No lecture access.",
+  "Das einreichende Konto kann keine Tokens erhalten.": "The uploader's account cannot receive tokens."
 }

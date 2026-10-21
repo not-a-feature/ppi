@@ -1,5 +1,5 @@
-import german from './locales/de.json';
-import english from './locales/en.json';
+import german from './locales/de.json' with { type: 'json' };
+import english from './locales/en.json' with { type: 'json' };
 
 export type Language = 'de' | 'en';
 export type Theme = 'light' | 'dark' | 'auto';

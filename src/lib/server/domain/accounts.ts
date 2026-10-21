@@ -6,10 +6,12 @@ import {
   credit,
   currentActor,
   audit,
-  bounded
+  bounded,
+  uploadNumberSql
 } from './shared.js';
 import { pool, transaction } from '../db.js';
 import { type PoolClient } from 'pg';
+import { anonymizeAccount } from '../account-cleanup.js';
 
 export async function getActor(userId: string): Promise<Actor | null> {
   const { rows } = await pool.query(
@@ -76,12 +78,12 @@ export async function listAdminUsersPage(
   return transaction(async (client) => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
     await currentActor(client, actor, true);
-    const from = `FROM "user" u JOIN ppi_user p ON p.user_id=u.id LEFT JOIN credit_account c ON c.user_id=u.id`;
+    const from = `FROM "user" u LEFT JOIN ppi_user p ON p.user_id=u.id LEFT JOIN credit_account c ON c.user_id=u.id`;
     const values = search ? [search] : [];
-    const filter = `WHERE p.anonymized_at IS NULL${
+    const filter = `WHERE p.anonymized_at IS NULL AND u.email ~ '^zx[a-z]{3}[0-9]{2}@student[.]uni-tuebingen[.]de$'${
       search
         ? ` AND (strpos(lower(u.email),lower($1))>0 OR strpos(lower(u.id),lower($1))>0
-      OR strpos(lower(p.status),lower($1))>0 OR strpos(COALESCE(c.balance,0)::text,$1)>0)`
+      OR strpos(lower(COALESCE(p.status,'unverified')),lower($1))>0 OR strpos(COALESCE(c.balance,0)::text,$1)>0)`
         : ''
     }`;
     const total =
@@ -91,12 +93,51 @@ export async function listAdminUsersPage(
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)));
     const entries = (
       await client.query(
-        `SELECT u.id,u.email,u."emailVerified" email_verified,p.is_admin,p.status,p.admin_note,p.note_version,p.note_updated_at,COALESCE(c.balance,0) balance ${from} ${filter}
+        `SELECT u.id,u.email,u."emailVerified" email_verified,COALESCE(p.is_admin,false) is_admin,
+        COALESCE(p.status,'unverified') status,p.admin_note,p.note_version,p.note_updated_at,p.last_login_at,
+        u."createdAt" registered_at,COALESCE(c.balance,0) balance ${from} ${filter}
       ORDER BY u.email,u.id ${options.paginate === false ? '' : `LIMIT $${values.length + 1} OFFSET $${values.length + 2}`}`,
         options.paginate === false ? values : [...values, pageSize, (page - 1) * pageSize]
       )
     ).rows;
     return { entries, total: options.paginate === false ? entries.length : total, page, pageSize };
+  });
+}
+
+export async function getAdminUser(actor: Actor, userId: string) {
+  bounded(userId, 128);
+  return transaction(async (client) => {
+    await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    await currentActor(client, actor, true);
+    const user = (
+      await client.query(
+        `SELECT u.id,u.email,u."createdAt" registered_at,p.last_login_at,
+        COALESCE(p.status,'unverified') status,COALESCE(p.is_admin,false) is_admin,
+        COALESCE(c.balance,0) balance FROM "user" u LEFT JOIN ppi_user p ON p.user_id=u.id
+        LEFT JOIN credit_account c ON c.user_id=u.id WHERE u.id=$1 AND p.anonymized_at IS NULL
+        AND u.email ~ '^zx[a-z]{3}[0-9]{2}@student[.]uni-tuebingen[.]de$'`,
+        [userId]
+      )
+    ).rows[0];
+    requireCondition(user, 404, 'not_found', 'User not found.');
+    const submissions = (
+      await client.query(
+        `SELECT s.id,s.created_at,s.review_state,s.visibility,${uploadNumberSql} upload_number,
+        ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id
+          WHERE rl.revision_id=s.current_revision_id ORDER BY l.name) lecture_names
+        FROM submission s WHERE s.uploader_id=$1 ORDER BY s.created_at DESC,s.id DESC`,
+        [userId]
+      )
+    ).rows;
+    const access = (
+      await client.query(
+        `SELECT a.lecture_id,l.name,a.starts_at,a.expires_at,a.expires_at>now() active
+        FROM lecture_access a JOIN lecture l ON l.id=a.lecture_id
+        WHERE a.user_id=$1 ORDER BY a.expires_at DESC,l.name`,
+        [userId]
+      )
+    ).rows;
+    return { user, submissions, access };
   });
 }
 
@@ -218,12 +259,9 @@ export async function setAccountStatus(
 export async function requestAccountDeletion(actor: Actor) {
   return transaction(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ppi_admin_accounts',0))");
-    await currentActor(client, actor);
+    const current = await currentActor(client, actor);
     await guardLastAdmin(client, actor.id);
-    await client.query("UPDATE ppi_user SET status='deletion_pending' WHERE user_id=$1", [
-      actor.id
-    ]);
-    await client.query('DELETE FROM session WHERE "userId"=$1', [actor.id]);
-    await audit(client, actor.id, 'user.deletion_requested', actor.id);
+    await anonymizeAccount(client, current);
+    await audit(client, actor.id, 'user.anonymized', actor.id, { reason: 'voluntary_deletion' });
   });
 }

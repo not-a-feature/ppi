@@ -178,4 +178,23 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('Inactive account cleanup', () =
     ).toBe(1);
     expect((await cleanup()).deleted).toBe(0);
   });
+  it('completes existing deletion requests without waiting for inactivity', async () => {
+    const pending = await user('1 day', '1 hour');
+    await pool.query("UPDATE ppi_user SET status='deletion_pending' WHERE user_id=$1", [
+      pending.id
+    ]);
+    expect((await cleanup()).deleted).toBe(1);
+    expect(
+      (await pool.query('SELECT status,anonymized_at FROM ppi_user WHERE user_id=$1', [pending.id]))
+        .rows[0]
+    ).toMatchObject({ status: 'deleted', anonymized_at: expect.any(Date) });
+    expect(
+      (
+        await pool.query(
+          "SELECT detail->>'reason' reason FROM audit_event WHERE action='user.anonymized' AND entity_id=$1",
+          [pending.id]
+        )
+      ).rows[0].reason
+    ).toBe('voluntary_deletion');
+  });
 });

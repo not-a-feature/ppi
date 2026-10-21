@@ -13,6 +13,7 @@
     "start": "node build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:seed": "tsx --env-file=.env scripts/seed.ts",
     "db:seed-playground": "tsx --env-file=.env scripts/seed-playground.ts",
@@ -38,6 +39,7 @@
     "yazl": "3.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/node": "^24.0.0",
     "@types/nodemailer": "^7.0.0",

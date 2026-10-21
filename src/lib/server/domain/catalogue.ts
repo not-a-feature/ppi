@@ -391,6 +391,7 @@ export async function updateLecture(
       'catalogue_duplicate',
       'This catalogue name already exists.'
     );
+    const previous = await client.query('SELECT name FROM lecture WHERE id=$1 FOR UPDATE', [id]);
     const result = await client.query(
       'UPDATE lecture SET name=$3,normalized_name=$4,aliases=$5,version=version+1 WHERE id=$1 AND version=$2 RETURNING *',
       [id, expectedVersion, name, name.normalize('NFKC').toLocaleLowerCase('de-DE'), aliases]
@@ -401,6 +402,14 @@ export async function updateLecture(
       'stale_lecture',
       'Lecture changed. Reload before editing.'
     );
+    if (previous.rows[0].name !== name)
+      await client.query(
+        `UPDATE lecture_archive a SET status='invalidated',error='Lecture name changed.'
+        WHERE a.status IN ('queued','ready') AND EXISTS(
+          SELECT 1 FROM revision_lecture rl WHERE rl.revision_id=ANY(a.revision_ids) AND rl.lecture_id=$1
+        )`,
+        [id]
+      );
     await audit(client, actor.id, 'lecture.updated', id, { name, aliases });
     return result.rows[0];
   });

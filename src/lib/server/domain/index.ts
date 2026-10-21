@@ -4,6 +4,7 @@ export {
   getActor,
   activateAccount,
   listAdminUsersPage,
+  getAdminUser,
   setUserNote,
   setAdmin,
   setAccountStatus,

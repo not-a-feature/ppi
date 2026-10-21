@@ -76,15 +76,15 @@
   </form>
 </section>
 <section class="card narrow" style="margin-top:2rem">
-  <h2>{t(language, 'Kontolöschung beantragen')}</h2>
+  <h2>{t(language, 'Konto löschen')}</h2>
   <p class="hint">
     {t(
       language,
-      'Der Zugriff wird sofort gesperrt. Die Redaktion prüft die Löschung bzw. Anonymisierung. Eingereichte Protokolle und Versionen bleiben erhalten.'
+      'Zugangsdaten und Profilangaben werden sofort entfernt. Protokolle und Buchungen bleiben ohne dein Anmeldekonto erhalten. Die Löschung kann nicht rückgängig gemacht werden.'
     )}
   </p>
   <details>
-    <summary>{t(language, 'Löschantrag stellen')}</summary>
+    <summary>{t(language, 'Konto löschen')}</summary>
     <form method="POST" action="?/deletion" style="margin-top:1rem">
       <label for="confirmation"
         >{t(language, 'Zur Bestätigung LÖSCHEN eingeben')}<input
@@ -94,7 +94,7 @@
           pattern="LÖSCHEN"
           autocomplete="off"
         /></label
-      ><button class="danger">{t(language, 'Kontolöschung beantragen')}</button>
+      ><button class="danger">{t(language, 'Konto endgültig löschen')}</button>
     </form>
   </details>
 </section>

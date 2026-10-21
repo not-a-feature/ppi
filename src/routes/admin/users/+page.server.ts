@@ -19,6 +19,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   });
   return {
     q,
+    filters: {
+      role: url.searchParams.get('role') ?? '',
+      status: url.searchParams.get('status') ?? ''
+    },
     ...result,
     page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
     requestKey: crypto.randomUUID()

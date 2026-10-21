@@ -65,7 +65,7 @@ export const actions: Actions = {
       return fail(400, { error: 'Bitte zur Bestätigung LÖSCHEN eingeben.' });
     const result = await actionResult(
       () => requestAccountDeletion(current),
-      'Die Kontolöschung wurde beantragt.'
+      'Das Konto wurde gelöscht.'
     );
     if ('message' in result) redirect(303, '/login');
     return result;

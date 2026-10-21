@@ -11,9 +11,19 @@ import { currentActor, getActor, DomainError, type Actor } from './domain/index.
 import { filePath } from './storage.js';
 import { getDeliveryBytes } from './download-delivery.js';
 import { downloadDay } from './download-watermark.js';
+import { uploadNumberSql } from './domain/shared.js';
 
 const MAX_ARCHIVE_BYTES = 200 * 1024 * 1024;
 const MAX_ARCHIVE_FILES = 100;
+function archiveName(name: string) {
+  return (
+    name
+      .replace(/[^\p{L}\p{N} ._()-]/gu, '_')
+      .replace(/^\.+/, '')
+      .trim()
+      .slice(0, 160) || 'protocols'
+  );
+}
 function requireId(id: string) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
     throw new DomainError(400, 'invalid_id', 'Invalid archive identifier.');
@@ -175,7 +185,13 @@ export async function prepareArchive(archiveId: string) {
     }
     const files = (
       await client.query(
-        `SELECT r.id,f.id file_id,f.storage_key,f.original_name,f.byte_count,f.sha256,f.media_type,f.safety_generation FROM submission_revision r JOIN stored_file f ON f.id=r.file_id WHERE r.id=ANY($1::uuid[]) ORDER BY r.id`,
+        `SELECT r.id,s.id submission_id,s.created_at uploaded_at,${uploadNumberSql} upload_number,
+        r.term,r.exam_date::text exam_date,
+        ARRAY(SELECT l.name FROM revision_lecture rl JOIN lecture l ON l.id=rl.lecture_id WHERE rl.revision_id=r.id ORDER BY l.name) lectures,
+        ARRAY(SELECT e.name FROM revision_examiner re JOIN examiner e ON e.id=re.examiner_id WHERE re.revision_id=r.id ORDER BY re.position) examiners,
+        f.id file_id,f.storage_key,f.original_name,f.byte_count,f.sha256,f.media_type,f.safety_generation
+        FROM submission_revision r JOIN submission s ON s.id=r.submission_id JOIN stored_file f ON f.id=r.file_id
+        WHERE r.id=ANY($1::uuid[]) ORDER BY s.created_at DESC,s.id DESC`,
         [archive.revision_ids]
       )
     ).rows;
@@ -220,14 +236,21 @@ export async function prepareArchive(archiveId: string) {
     const zipStream = zip.outputStream as Readable;
     zip.on('error', (error) => zipStream.destroy(error));
     const output = pipeline(zipStream, createWriteStream(temporary, { flags: 'wx', mode: 0o600 }));
-    for (const [index, file] of files.entries()) {
-      const name =
-        file.original_name
-          .replace(/[^\p{L}\p{N} ._()-]/gu, '_')
-          .replace(/^\.+/, '')
-          .slice(0, 200) || 'protocol';
-      zip.addFile(deliveredFiles[index], `${index + 1}-${name}`);
-    }
+    const index = files.map((file, position) => {
+      const filename = `${file.upload_number ?? position + 1}-${archiveName(file.original_name)}`;
+      zip.addFile(deliveredFiles[position], filename);
+      return {
+        number: file.upload_number,
+        submission_id: file.submission_id,
+        filename,
+        lectures: file.lectures,
+        examiners: file.examiners,
+        semester: file.term,
+        exam_date: file.exam_date,
+        uploaded_at: file.uploaded_at.toISOString()
+      };
+    });
+    zip.addBuffer(Buffer.from(JSON.stringify(index, null, 2) + '\n'), 'index.json');
     zip.end();
     await output;
     await rename(temporary, destination);
@@ -313,7 +336,8 @@ export async function getArchiveDownload(actor: Actor, id: string, openFile = fa
     await currentActor(client, actor);
     const archive = (
       await client.query(
-        'SELECT * FROM lecture_archive WHERE id=$1 AND requester_id=$2 FOR UPDATE',
+        `SELECT a.*,l.name lecture_name FROM lecture_archive a JOIN lecture l ON l.id=a.lecture_id
+        WHERE a.id=$1 AND a.requester_id=$2 FOR UPDATE OF a`,
         [id, actor.id]
       )
     ).rows[0];
@@ -327,7 +351,7 @@ export async function getArchiveDownload(actor: Actor, id: string, openFile = fa
     return {
       storageKey: archive.storage_key as string,
       handle: openFile ? await open(filePath(archive.storage_key), 'r') : undefined,
-      originalName: `lecture-${archive.lecture_id}.zip`,
+      originalName: `${archiveName(archive.lecture_name)}.zip`,
       mediaType: 'application/zip' as const,
       byteCount: Number(archive.byte_count)
     };

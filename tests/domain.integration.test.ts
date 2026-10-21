@@ -214,6 +214,33 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     await expect(domain.setAdmin(admin, admin.id, false)).rejects.toMatchObject({
       code: 'last_admin'
     });
+    await expect(domain.requestAccountDeletion(admin)).rejects.toMatchObject({
+      code: 'last_admin'
+    });
+  });
+  it('shows unverified accounts and scopes account contributions and access to administrators', async () => {
+    const student = await user(),
+      unverified = await user(false);
+    const lecture = await domain.createLecture(admin, `Account details ${randomUUID()}`);
+    const submitted = await domain.submitProtocol(student, input(lecture.id));
+    await domain.purchaseLectureAccess(student, lecture.id, randomUUID());
+    const details = await domain.getAdminUser(admin, student.id);
+    expect(details.submissions).toMatchObject([
+      { id: submitted.submissionId, lecture_names: [lecture.name] }
+    ]);
+    expect(details.access).toMatchObject([{ lecture_id: lecture.id, active: true }]);
+    await expect(domain.getAdminUser(student, student.id)).rejects.toMatchObject({
+      code: 'admin_required'
+    });
+    expect(
+      (await domain.listAdminUsersPage(admin, { search: unverified.email })).entries[0]
+    ).toMatchObject({
+      id: unverified.id,
+      status: 'unverified',
+      is_admin: false,
+      last_login_at: null
+    });
+    expect((await domain.getAdminUser(admin, unverified.id)).submissions).toHaveLength(0);
   });
   it('creates lectures with initial aliases and an examiner scoped to that lecture', async () => {
     const name = `Catalogue creation ${randomUUID()}`;
@@ -560,8 +587,8 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
       period = randomUUID();
     const suspended = await user();
     await domain.setAccountStatus(admin, suspended.id, 'suspended');
-    const deletionPending = await user();
-    await domain.requestAccountDeletion(deletionPending);
+    const deleted = await user();
+    await domain.requestAccountDeletion(deleted);
     const preview = await domain.getPeriodicGrantPreview(admin);
     const verifiedCount = (
       await db.pool.query('SELECT count(*)::integer n FROM "user" WHERE "emailVerified"')
@@ -579,12 +606,9 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
         .rows[0].balance
     ).toBe(7);
     expect(
-      (
-        await db.pool.query('SELECT balance FROM credit_account WHERE user_id=$1', [
-          deletionPending.id
-        ])
-      ).rows[0].balance
-    ).toBe(7);
+      (await db.pool.query('SELECT balance FROM credit_account WHERE user_id=$1', [deleted.id]))
+        .rows[0].balance
+    ).toBe(5);
     await domain.processPeriodicGrant(period, 1000);
     expect(await balance(student)).toBe(before + 2);
     expect(
@@ -592,7 +616,7 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     ).toHaveLength(0);
     await domain.updateSettings(admin, { ...policy, periodic_grant: 2 });
   });
-  it('retains protocols after a deletion request and reconciles cached balances with the ledger', async () => {
+  it('immediately anonymizes voluntary deletions while preserving protocols and the ledger', async () => {
     const student = await user(),
       lecture = await domain.createLecture(admin, `Deletion ${randomUUID()}`);
     const submitted = await domain.submitProtocol(student, input(lecture.id));
@@ -601,6 +625,18 @@ describe.skipIf(!testUrl)('PostgreSQL domain transactions', () => {
     expect((await domain.getSubmission(admin, submitted.submissionId)).uploader_id).toBe(
       student.id
     );
+    expect(
+      (
+        await db.pool.query('SELECT status,anonymized_at FROM ppi_user WHERE user_id=$1', [
+          student.id
+        ])
+      ).rows[0]
+    ).toMatchObject({ status: 'deleted', anonymized_at: expect.any(Date) });
+    expect(
+      (await db.pool.query('SELECT email,"emailVerified" FROM "user" WHERE id=$1', [student.id]))
+        .rows[0]
+    ).toMatchObject({ email: expect.stringMatching(/@accounts\.invalid$/), emailVerified: false });
+    await expect(domain.getAdminUser(admin, student.id)).rejects.toMatchObject({ status: 404 });
     const mismatches = await db.pool
       .query(`SELECT a.user_id FROM credit_account a LEFT JOIN credit_entry e ON e.user_id=a.user_id
       GROUP BY a.user_id,a.balance HAVING a.balance<>COALESCE(sum(e.amount),0)`);

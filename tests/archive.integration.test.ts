@@ -21,6 +21,22 @@ let archives: typeof import('../src/lib/server/archives.js');
 let storage: typeof import('../src/lib/server/storage.js');
 let admin: Actor, student: Actor, other: Actor, lectureId: string;
 
+function archiveMembers(bytes: Buffer) {
+  const members: Record<string, string> = {};
+  let offset = bytes.readUInt32LE(bytes.length - 6);
+  for (let entry = 0; entry < bytes.readUInt16LE(bytes.length - 12); entry++) {
+    const nameLength = bytes.readUInt16LE(offset + 28);
+    const name = bytes.subarray(offset + 46, offset + 46 + nameLength).toString('utf8');
+    const local = bytes.readUInt32LE(offset + 42);
+    const start = local + 30 + bytes.readUInt16LE(local + 26) + bytes.readUInt16LE(local + 28);
+    members[name] = inflateRawSync(
+      bytes.subarray(start, start + bytes.readUInt32LE(offset + 20))
+    ).toString('utf8');
+    offset += 46 + nameLength + bytes.readUInt16LE(offset + 30) + bytes.readUInt16LE(offset + 32);
+  }
+  return members;
+}
+
 async function createStudent(zx: string): Promise<Actor> {
   const id = randomUUID(),
     email = `${zx}@student.uni-tuebingen.de`;
@@ -46,6 +62,8 @@ async function publishFile(name: string) {
     },
     lectureIds: [lectureId],
     term: termOptions()[0].value,
+    examinerName: 'Archive Examiner',
+    examDate: '2026-05-18',
     remarks: 'Archive fixture.',
     collaboratorZx: [],
     attested: true,
@@ -129,22 +147,28 @@ describe.skipIf(!testUrl)('private lecture archives', () => {
       bytes = await readFile(storage.filePath(download.storageKey));
     expect(bytes.readUInt32LE(0)).toBe(0x04034b50);
     expect(download.byteCount).toBe(bytes.length);
-    expect(bytes.readUInt16LE(bytes.length - 12)).toBe(2);
+    expect(bytes.readUInt16LE(bytes.length - 12)).toBe(3);
+    expect(download.originalName).toBe('Archive test lecture.zip');
     expect(bytes.includes(Buffer.from('../dummy-a.txt'))).toBe(false);
     const directoryOffset = bytes.readUInt32LE(bytes.length - 6);
     expect(bytes.readUInt32LE(directoryOffset)).toBe(0x02014b50);
-    const compressedSize = bytes.readUInt32LE(directoryOffset + 20);
-    const localOffset = bytes.readUInt32LE(directoryOffset + 42);
-    const contentOffset =
-      localOffset +
-      30 +
-      bytes.readUInt16LE(localOffset + 26) +
-      bytes.readUInt16LE(localOffset + 28);
-    const member = inflateRawSync(
-      bytes.subarray(contentOffset, contentOffset + compressedSize)
-    ).toString('utf8');
+    const members = archiveMembers(bytes);
+    const member = Object.values(members)[0];
     expect(member).toMatch(/^PPI - zxabc01 - \d{2}\.\d{2}\.\d{4}\n\nDummy archive protocol/);
     expect(member).not.toContain('zxabc02');
+    const index = JSON.parse(members['index.json']);
+    expect(index).toHaveLength(2);
+    for (const entry of index) {
+      expect(entry).toMatchObject({
+        lectures: ['Archive test lecture'],
+        examiners: ['Archive Examiner'],
+        semester: termOptions()[0].value,
+        exam_date: '2026-05-18'
+      });
+      expect(entry.number).toMatch(/^\d+$/);
+      expect(entry.uploaded_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(Object.hasOwn(members, entry.filename)).toBe(true);
+    }
     expect((await archives.getArchive(student, request.id)).file_count).toBe(2);
     expect(await archives.getLectureArchive(student, lectureId, 2)).toMatchObject({
       id: request.id,
@@ -164,6 +188,44 @@ describe.skipIf(!testUrl)('private lecture archives', () => {
     await expect(archives.requestArchive(other, lectureId)).rejects.toMatchObject({
       code: 'lecture_access_required'
     });
+  });
+  it('rebuilds queued and ready ZIP indexes when any assigned lecture is renamed', async () => {
+    const shared = await domain.createLecture(admin, 'Shared archive lecture');
+    const revisionId = (
+      await db.pool.query('SELECT published_revision_id FROM submission ORDER BY id LIMIT 1')
+    ).rows[0].published_revision_id;
+    await db.pool.query('INSERT INTO revision_lecture VALUES($1,$2)', [revisionId, shared.id]);
+    await domain.purchaseLectureAccess(other, lectureId, randomUUID());
+    await domain.purchaseLectureAccess(student, shared.id, randomUUID());
+    const ready = await archives.requestArchive(other, lectureId);
+    await archives.prepareArchive(ready.id);
+    const queued = await archives.requestArchive(student, shared.id);
+    const current = await domain.getLecture(admin, shared.id);
+    const renamed = await domain.updateLecture(admin, shared.id, current.version, {
+      name: 'Renamed archive lecture',
+      aliases: []
+    });
+    for (const [actor, archive] of [
+      [other, ready],
+      [student, queued]
+    ] as const)
+      expect((await archives.getArchive(actor, archive.id)).status).toBe('invalidated');
+    const replacement = await archives.requestArchive(other, lectureId);
+    expect(replacement.id).not.toBe(ready.id);
+    await archives.prepareArchive(replacement.id);
+    const download = await archives.getArchiveDownload(other, replacement.id);
+    const index = JSON.parse(
+      archiveMembers(await readFile(storage.filePath(download.storageKey)))['index.json']
+    );
+    expect(
+      index.find((entry: { lectures: string[] }) => entry.lectures.includes(renamed.name))
+    ).toBeTruthy();
+    expect(JSON.stringify(index)).not.toContain('Shared archive lecture');
+    await domain.updateLecture(admin, shared.id, renamed.version, {
+      name: renamed.name,
+      aliases: ['New alias']
+    });
+    expect((await archives.getArchive(other, replacement.id)).status).toBe('ready');
   });
   it('reuses queued and ready archives under concurrent requests and preserves the original expiry', async () => {
     const requests = await Promise.all(
