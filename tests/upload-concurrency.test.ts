@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$app/environment', () => ({ building: false }));
-vi.mock('$lib/server/auth', () => ({
+vi.mock('$app/env', () => ({ building: false }));
+vi.mock('#lib/server/auth/index.js', () => ({
   auth: {
     api: {
       getSession: async ({ headers }: { headers: Headers }) => {
@@ -11,18 +11,21 @@ vi.mock('$lib/server/auth', () => ({
     }
   }
 }));
-vi.mock('$lib/server/db', () => ({ pool: {} }));
-vi.mock('$lib/server/admin-alerts', () => ({ recordSystemFailure: vi.fn(async () => {}) }));
-vi.mock('$lib/server/auth/session', () => ({
+vi.mock('#lib/server/db.js', () => ({ pool: {} }));
+vi.mock('#lib/server/admin-alerts.js', () => ({ recordSystemFailure: vi.fn(async () => {}) }));
+vi.mock('#lib/server/auth/session.js', () => ({
   currentAccount: async (id: string) => ({
     actor: { id, email: 'zxabc01@student.uni-tuebingen.de', isAdmin: false },
     preferences: { language: id === 'english' ? 'en' : 'de', theme: 'auto' }
   })
 }));
-vi.mock('$lib/server/auth/rate-limit', () => ({ allowAuthForm: async () => true }));
-vi.mock('$lib/server/auth/client-address', () => import('../src/lib/server/auth/client-address'));
-vi.mock('$lib/server/upload-concurrency', () => import('../src/lib/server/upload-concurrency'));
-vi.mock('$lib/server/preferences', () => ({
+vi.mock('#lib/server/auth/rate-limit.js', () => ({ allowAuthForm: async () => true }));
+vi.mock(
+  '#lib/server/auth/client-address.js',
+  () => import('../src/lib/server/auth/client-address')
+);
+vi.mock('#lib/server/upload-concurrency.js', () => import('../src/lib/server/upload-concurrency'));
+vi.mock('#lib/server/preferences.js', () => ({
   defaultPreferences: { language: 'de', theme: 'auto' }
 }));
 vi.mock('better-auth/svelte-kit', () => ({

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n.js';
   import { page } from '$app/state';
   import { afterNavigate } from '$app/navigation';
   import { onMount } from 'svelte';

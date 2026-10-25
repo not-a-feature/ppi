@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const doubles = vi.hoisted(() => ({ getDownload: vi.fn(), readStoredFile: vi.fn() }));
-vi.mock('$lib/server/domain/index.js', () => ({
+vi.mock('#lib/server/domain/index.js', () => ({
   getDownload: doubles.getDownload,
   DomainError: class extends Error {}
 }));
-vi.mock('$lib/server/download-delivery.js', () => ({ getDeliveryBytes: doubles.readStoredFile }));
+vi.mock('#lib/server/download-delivery.js', () => ({ getDeliveryBytes: doubles.readStoredFile }));
 import { GET } from '../src/routes/files/[id]/+server';
 
 function event(preview = true, actor: object | null = { id: 'reader' }) {

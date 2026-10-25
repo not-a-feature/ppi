@@ -1,5 +1,8 @@
-export function namedAction(url: URL, name: string): string {
-  const params = new URLSearchParams(url.searchParams);
+export function namedAction(
+  url: { searchParams: Iterable<[string, string]> },
+  name: string
+): string {
+  const params = new URLSearchParams([...url.searchParams]);
   for (const key of [...params.keys()]) {
     if (key.startsWith('/')) params.delete(key);
   }

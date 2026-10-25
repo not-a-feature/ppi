@@ -1,4 +1,4 @@
-import { listAdminEntries } from '$lib/server/domain/admin-lists';
+import { listAdminEntries } from '#lib/server/domain/admin-lists.js';
 import { admin, loadResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, url }) => {

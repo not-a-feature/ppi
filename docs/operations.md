@@ -1,65 +1,46 @@
 # Operations
 
-The root [README](../README.md) covers local setup. `compose.yaml` provides development PostgreSQL, Mailpit and an optional worker; it is not a complete production deployment. Production infrastructure and migration are still pending.
-
-The separate [test-server Compose file](../deploy/compose.test.yaml) runs web, worker, PostgreSQL and a private mail viewer under `/opt/ppi`, with application source in `source/`. Supply protected `app.env`, `mail.env` and `db.env` files, a restricted runtime database role, and an HTTPS host proxy that overwrites forwarded headers. SMTP credentials belong only in the worker's `mail.env`. The application listener and mail viewer bind to loopback; the database has no published port. Authenticated SMTP requires TLS. The website uses the normal verified-account login.
-
-Run the `signatures` service before starting the worker, then install the supplied `ppi-signatures` systemd service and timer for daily updates. Certificate renewal must also reload the host proxy. A test deployment does not replace the production checks below or the final migration rehearsal.
-
-## Verification
-
-Use Node.js 24 and the locked dependencies. Database tests create isolated schemas in a disposable PostgreSQL database; never point `TEST_DATABASE_URL` at production.
-
-```sh
-npm run check
-TEST_DATABASE_URL=postgresql://ppi:ppi_local_only@127.0.0.1:54329/ppi_test npm test
-npm run build
-```
-
-The normal suite does not require native OCR tools. To exercise OCR inside the worker image after creating the disposable `ppi_test` database:
-
-```sh
-docker compose exec -e TEST_DATABASE_URL=postgresql://ppi:ppi_local_only@db:5432/ppi_test -e REAL_OCR_OUTPUT=/tmp/ppi-ocr-proof worker node node_modules/vitest/vitest.mjs run tests/ocr-pipeline.integration.test.ts
-```
-
-`REAL_OCR_OUTPUT` enables the native test and selects the output directory. For the synthetic 100-user load benchmark, set `TEST_DATABASE_URL` and `BETTER_AUTH_SECRET`, build the application, then run `node scripts/performance-load.mjs`. Results go to `.data/performance-100.json` by default. These synthetic measurements do not establish production capacity.
+See the [README](../README.md) for local setup. Root `compose.yaml` is for development. The [test deployment](../deploy/compose.test.yaml) runs web, worker, PostgreSQL and a private mail viewer, using protected `app.env`, `mail.env` and `db.env` files.
 
 ## Deployment
 
-Build one release for web and worker, apply migrations once, and run both against matching database and private-file volumes. Use separate migration and restricted runtime database roles. The current development account is a bootstrap owner. Reuse the FSI proxy and SMTP infrastructure after verifying its current private configuration.
+Build one release for web and worker, apply migrations once, and give both access to the same database and private files. Use separate migration and restricted runtime database roles. Store secrets and real files outside Git; never expose the private file directory as static content.
 
-Start with [.env.example](../.env.example), [web settings](../deploy/web.env.example) and [nginx configuration](../deploy/nginx.conf). Set a random `BETTER_AUTH_SECRET`, the public HTTPS `ORIGIN`, database/SMTP credentials and private storage paths. Secrets and real protocol data stay outside Git. The private file directory must never be a static web root.
+Start with [.env.example](../.env.example), [web settings](../deploy/web.env.example) and [nginx configuration](../deploy/nginx.conf). Set the public HTTPS `ORIGIN`, a random `BETTER_AUTH_SECRET`, database credentials and storage paths. Keep SMTP credentials in the worker environment and require TLS for authenticated SMTP.
 
-For the supplied single-proxy setup, set `ADDRESS_HEADER=x-forwarded-for` and `XFF_DEPTH=1`. nginx overwrites forwarding headers with its client's address. Keep the web listener private: loopback behind a host proxy, or a private container network with no published web port. An additional upstream proxy requires an explicitly reviewed trust configuration. Direct local development leaves `ADDRESS_HEADER` empty. SvelteKit and Better Auth retain their origin/CSRF checks.
+The proxy must overwrite `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`. Set `ADDRESS_HEADER=x-forwarded-for`, `XFF_DEPTH=1` and `PROTOCOL_HEADER=x-forwarded-proto`; keep the application listener private. SvelteKit 3 derives the request origin from these headers; `ORIGIN` configures Better Auth and email links. Direct local development leaves `ADDRESS_HEADER` empty. Additional proxies require a reviewed trust configuration.
 
-Production requires ClamAV and current signatures; `FILE_SCAN_MODE=development` is rejected in production. Apply worker CPU, memory and process limits. Verify SMTP delivery, database connectivity and worker heartbeats before switching traffic. `/api/health` is a read-only database readiness check.
+There are no default accounts. Register and verify the first administrator, set `BOOTSTRAP_ADMIN_EMAIL` in the operator's `.env`, then run `npm run db:bootstrap-admin` once. Remove that setting afterwards; further promotions happen through the website.
 
-## Resource limits
+Production requires ClamAV with current signatures; development scan mode is rejected. Run the `signatures` service before the worker and install the supplied signature-update service/timer. Apply worker CPU, memory and process limits. Reload the proxy after certificate renewal.
 
-| Setting                      | Default                                                                             |
-| ---------------------------- | ----------------------------------------------------------------------------------- |
-| File / request size          | 30 MiB / 32 MiB                                                                     |
-| `UPLOADS_PER_HOUR`           | 30 per account                                                                      |
-| `UPLOAD_PENDING_LIMIT`       | 10 per account                                                                      |
-| `UPLOAD_STORAGE_MIB`         | 256 MiB retained originals and OCR derivatives per account                          |
-| Upload parsing               | Four requests per web process, one per account; extra requests receive 429          |
-| `PDF_EXTRACT_TIMEOUT_MS`     | 10 seconds, maximum 30; extraction heap 192 MiB                                     |
-| OCR                          | One file at a time, two page processes, 15 seconds per page, three minutes per file |
-| Development worker container | 1 GiB memory, two CPU cores, 128 processes                                          |
+## Checks and monitoring
 
-Upload quotas are checked before writing and again under an account lock when committing. Database connections have bounded statement, lock and idle-transaction waits. Administrators can inspect failures, retry jobs and pause queues through the website. A paused queue still permits running work to finish.
+Use the locked dependencies and current Node 24 security release. Monthly update PRs cover npm, the Dockerfile and CI actions. TypeScript stays on compatible 6.x; PostgreSQL stays on supported 17.x until a planned major upgrade.
 
-Admin settings allow any email address with separate choices for exhausted job failures, content reports, application/worker errors and uploads (including improvements). Alerts use the existing mail queue; worker crash alerts can arrive after restart. Repeated application errors are grouped into 15-minute windows. Abruptly stopped workers are detected after a missed two-minute heartbeat by a running worker. Complete server outages require external monitoring. Alert emails contain links and references, without protocol content or exception details.
+```sh
+export TEST_DATABASE_URL=postgresql://ppi:ppi_local_only@127.0.0.1:54329/ppi_test
+npm run check
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
 
-Account cleanup defaults to the first of every month at 03:00 Europe/Berlin. It processes at most 100 accounts per transaction and repeats until eligible accounts are handled. Credentials, sessions, profile fields, private notes, queued personal mail and access grants are removed; contributed files, ledger entries and audit references remain. Historical protocol content and free-text audit/financial records are not rewritten. The last active administrator is skipped. The schedule can be disabled or reduced to every three or six months under administration; disabling it survives restarts. Job results show the number removed and protected administrators.
+Set `TEST_DATABASE_URL` to a disposable local database for both test commands. Browser tests isolate their data, capture email and use synthetic safety results. Native OCR tests additionally require `REAL_OCR_OUTPUT` and the worker's OCR tools. The optional `scripts/performance-load.mjs` benchmark uses the same test database plus `BETTER_AUTH_SECRET` and a compiled build; its synthetic results do not establish production capacity.
 
-## Backup and release
+`/api/health` checks database readiness. Verify mail delivery and worker heartbeats separately. Admin email alerts cover exhausted job failures, reports, application/worker errors and uploads; a mail/worker outage can delay delivery. External monitoring must detect complete outages and low disk space.
 
-1. Put the proxy in maintenance mode and prevent new worker jobs and schedules from starting.
-2. Drain in-flight requests and jobs, then gracefully stop web and worker. Abort the backup if writers cannot be drained.
-3. With all writers stopped, dump PostgreSQL and copy the private files plus a hash manifest as one backup set. Keep a protected off-host copy.
-4. Verify the set, restart services, and test an isolated restore with outbound mail disabled. Check balances, access grants, published file references, hashes and durable jobs.
+Upload/request limits are 30/32 MiB. Configurable quotas and extraction timeouts are in `.env.example`; parsing admits four uploads per process and one per account. OCR and database operations have bounded waits. Queue pause allows running work to finish.
 
-Queue pause alone does not create a consistent backup. Agree recovery targets and ownership, then demonstrate a timed restore before launch. Roll back application images only while schema and job payloads remain compatible; otherwise freeze writes and reconcile first.
+Account cleanup defaults to the first of each month at 03:00 Europe/Berlin, in batches of 100. It removes credentials, personal fields and access grants, retaining protocols, ledger entries and audit references. Historical document and free-text audit/financial content is not rewritten. See [account rules](architecture.md#account-and-submission-rules).
 
-Before production, finish the scanner/proxy deployment, restricted database roles, retention/anonymisation policy, restore rehearsal and legacy import. Running-job cancellation and website-editable concurrency are also outstanding. No model-based moderation is enabled.
+## Backup and launch
+
+1. Enable maintenance mode, stop new jobs/schedules and drain requests and running jobs. Stop web and worker; abort if writers cannot be stopped.
+2. With writers stopped, dump PostgreSQL and copy private files with a hash manifest as one backup set. Verify it and keep a protected off-host copy before restarting.
+3. Rehearse an isolated restore with mail disabled. Check balances, grants, published files, hashes and durable jobs; record recovery ownership and acceptable data loss/downtime.
+
+Queue pause alone is not a consistent backup. Roll back images only when schema and job payloads remain compatible; otherwise freeze writes and reconcile first.
+
+Before launch, complete the [migration rehearsal](migration.md), verify real registration/reset mail, scanning, OCR and downloads on the release image, configure monitoring/log retention, and confirm the imprint, privacy notice and retention policy with the operator.

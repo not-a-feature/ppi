@@ -6,6 +6,7 @@ import { hashPassword } from 'better-auth/crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
+import { spawnSync } from 'node:child_process';
 import { password } from './support.js';
 import { pool } from '../../src/lib/server/db.js';
 import {
@@ -38,8 +39,6 @@ for (const zx of ['zxbrw00', 'zxbrw02', 'zxbrw03']) {
     [randomUUID(), id, hash]
   );
   await activateAccount(id);
-  if (zx === 'zxbrw00')
-    await pool.query('UPDATE ppi_user SET is_admin=true WHERE user_id=$1', [id]);
 }
 const adminId = (
   await pool.query('SELECT id FROM "user" WHERE email=$1', ['zxbrw00@student.uni-tuebingen.de'])
@@ -49,7 +48,31 @@ await pool.query('INSERT INTO "user"(id,name,email,"emailVerified") VALUES($1,$2
   'Unverified browser fixture',
   'zxbrw04@student.uni-tuebingen.de'
 ]);
+function bootstrap(email: string) {
+  return spawnSync(process.execPath, ['--import', 'tsx', 'scripts/bootstrap-admin.ts'], {
+    env: { ...process.env, BOOTSTRAP_ADMIN_EMAIL: email },
+    encoding: 'utf8',
+    windowsHide: true
+  });
+}
+assert.notEqual(bootstrap('').status, 0, 'Bootstrap requires an explicit environment setting.');
+assert.notEqual(
+  bootstrap('zxbrw04@student.uni-tuebingen.de').status,
+  0,
+  'Unverified accounts cannot be administrators.'
+);
+assert.equal(
+  bootstrap('zxbrw00@student.uni-tuebingen.de').status,
+  0,
+  'The verified first administrator can be promoted.'
+);
+assert.notEqual(
+  bootstrap('zxbrw02@student.uni-tuebingen.de').status,
+  0,
+  'A second bootstrap must not promote another account.'
+);
 const admin = (await getActor(adminId))!;
+assert(admin.isAdmin);
 const lecture = await createLecture(admin, 'Browser test lecture');
 const readerId = (
   await pool.query('SELECT id FROM "user" WHERE email=$1', ['zxbrw03@student.uni-tuebingen.de'])
@@ -59,10 +82,12 @@ Object.assign(process.env, {
   NODE_ENV: 'production',
   ADDRESS_HEADER: 'x-forwarded-for',
   XFF_DEPTH: '1',
+  PROTOCOL_HEADER: 'x-forwarded-proto',
   FILE_SCAN_MODE: 'clamav'
 });
 const { handler } = await import(pathToFileURL(resolve('build/handler.js')).href);
 createServer((request, response) => {
   request.headers['x-forwarded-for'] = request.socket.remoteAddress;
+  request.headers['x-forwarded-proto'] = 'http';
   handler(request, response);
 }).listen(4174, '127.0.0.1');

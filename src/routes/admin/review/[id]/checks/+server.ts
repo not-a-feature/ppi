@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getContentChecks } from '$lib/server/content-checks';
+import { getContentChecks } from '#lib/server/content-checks.js';
 import { admin, loadResult } from '../../../../_helpers';
 import type { RequestHandler } from './$types';
 

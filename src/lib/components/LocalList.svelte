@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack, type Snippet } from 'svelte';
-  import { afterNavigate, replaceState } from '$app/navigation';
+  import { afterNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
   import SearchForm from './SearchForm.svelte';
   import Pagination from './Pagination.svelte';
@@ -54,13 +54,13 @@
   let start = $derived((displayPage - 1) * pageSize);
   let visible = $derived(filtered.slice(start, start + pageSize));
   function updateUrl() {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.delete('q');
     url.searchParams.delete('page');
     if (search) url.searchParams.set('q', search);
     if (requestedPage > 1) url.searchParams.set('page', String(requestedPage));
     for (const [key, value] of Object.entries(values)) url.searchParams.set(key, value);
-    replaceState(url, page.state);
+    void goto(url, { shallow: true, replace: true, state: page.state });
   }
   afterNavigate(({ type, to }) => {
     if (!to || (type !== 'popstate' && type !== 'link')) return;

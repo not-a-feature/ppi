@@ -1,4 +1,4 @@
-import { t } from '$lib/i18n';
+import { t } from '#lib/i18n.js';
 import { fail } from '@sveltejs/kit';
 import {
   getSubmission,
@@ -12,11 +12,11 @@ import {
   withdrawPublication,
   reprocessFile,
   type DecisionInput
-} from '$lib/server/domain';
+} from '#lib/server/domain/index.js';
 import { admin, field, actionResult, loadResult } from '../../../_helpers';
-import { requestProtocolFileDeletion } from '$lib/server/deletion';
-import { getContentChecks, requestContentCheck } from '$lib/server/content-checks';
-import { updateProtocolMetadata } from '$lib/server/domain/metadata';
+import { requestProtocolFileDeletion } from '#lib/server/deletion.js';
+import { getContentChecks, requestContentCheck } from '#lib/server/content-checks.js';
+import { updateProtocolMetadata } from '#lib/server/domain/metadata.js';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, params, url }) => {
   const current = admin(locals);

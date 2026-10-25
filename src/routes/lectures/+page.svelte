@@ -1,10 +1,10 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { afterNavigate, replaceState } from '$app/navigation';
-  import { matchesLecture } from '$lib/catalogue-search';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { matchesLecture } from '#lib/catalogue-search.js';
   import { page } from '$app/state';
-  import Pagination from '$lib/components/Pagination.svelte';
-  import { t as translate, protocolCountLabel, type MessageKey } from '$lib/i18n';
+  import Pagination from '#lib/components/Pagination.svelte';
+  import { t as translate, protocolCountLabel, type MessageKey } from '#lib/i18n.js';
   let { data } = $props();
   const t = (key: MessageKey, values?: Record<string, string | number>) =>
     translate(data.preferences.language, key, values);
@@ -30,14 +30,14 @@
   }
   function searchNow(resetPage = true) {
     if (resetPage) requestedPage = 1;
-    replaceState(catalogueUrl(), page.state);
+    void goto(catalogueUrl(), { shallow: true, replace: true, state: page.state });
   }
   function changeView(next: 'cards' | 'list') {
     view = next;
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     if (next === 'list') url.searchParams.set('view', 'list');
     else url.searchParams.delete('view');
-    replaceState(url, page.state);
+    void goto(url, { shallow: true, replace: true, state: page.state });
   }
   afterNavigate(({ type, to }) => {
     if (!to || (type !== 'popstate' && type !== 'link')) return;

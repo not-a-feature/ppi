@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
-import { auth } from '$lib/server/auth';
-import { studentEmail, studentIdentifierPattern } from '$lib/server/auth/policy';
+import { auth } from '#lib/server/auth/index.js';
+import { studentEmail, studentIdentifierPattern } from '#lib/server/auth/policy.js';
 import { field } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 const flows = ['login', 'register', 'verify-email', 'forgot-password', 'reset-password'];

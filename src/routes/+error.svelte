@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { feedbackText } from '$lib/i18n';
-  import { t } from '$lib/i18n';
+  import { feedbackText } from '#lib/i18n.js';
+  import { t } from '#lib/i18n.js';
   import { page } from '$app/state';
   let language = $derived(page.data.preferences?.language ?? 'de');
 </script>

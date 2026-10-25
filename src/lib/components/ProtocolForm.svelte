@@ -1,9 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { page } from '$app/state';
-  import { t, type MessageKey } from '$lib/i18n';
-  import { termLabel, termOptions } from '$lib/terms';
-  import { MAX_FILE_BYTES } from '$lib/file-limits';
+  import { t, type MessageKey } from '#lib/i18n.js';
+  import { termLabel, termOptions } from '#lib/terms.js';
+  import { MAX_FILE_BYTES } from '#lib/file-limits.js';
   import ExaminerSelector from './ExaminerSelector.svelte';
   import CourseSelector, {
     type LectureSelection,

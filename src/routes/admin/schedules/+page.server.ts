@@ -1,11 +1,11 @@
-import { getPeriodicGrantPreview } from '$lib/server/domain';
+import { getPeriodicGrantPreview } from '#lib/server/domain/index.js';
 import {
   getGrantSchedule,
   runGrantNow,
   updateGrantSchedule,
   getAccountCleanupSchedule,
   updateAccountCleanupSchedule
-} from '$lib/server/jobs';
+} from '#lib/server/jobs.js';
 
 import { admin, field, actionResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';

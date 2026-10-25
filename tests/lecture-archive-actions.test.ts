@@ -17,8 +17,8 @@ const mocks = vi.hoisted(() => ({
     }
   }
 }));
-vi.mock('$lib/server/domain', () => mocks);
-vi.mock('$lib/server/archives', () => mocks);
+vi.mock('#lib/server/domain/index.js', () => mocks);
+vi.mock('#lib/server/archives.js', () => mocks);
 import { actions } from '../src/routes/lectures/[id]/+page.server';
 import { GET } from '../src/routes/archives/[id]/status/+server';
 

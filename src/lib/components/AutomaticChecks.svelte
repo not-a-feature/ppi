@@ -1,10 +1,10 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import { untrack } from 'svelte';
-  import { namedAction } from '$lib/form-actions';
-  import { t, dateText, type Language, type MessageKey } from '$lib/i18n';
-  import type { ContentCheckReport } from '$lib/server/content-checks';
+  import { namedAction } from '#lib/form-actions.js';
+  import { t, dateText, type Language, type MessageKey } from '#lib/i18n.js';
+  import type { ContentCheckReport } from '#lib/server/content-checks.js';
 
   let {
     initialReport,
@@ -49,7 +49,7 @@
             (report.ocrStatus !== initialOcrStatus &&
               ['ready', 'partial'].includes(report.ocrStatus ?? ''))
           )
-            await invalidateAll();
+            await refreshAll();
           return;
         }
         interval = Math.min(10000, interval * 1.5);

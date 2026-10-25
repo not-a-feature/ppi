@@ -1,4 +1,4 @@
-import { getAdminUser } from '$lib/server/domain';
+import { getAdminUser } from '#lib/server/domain/index.js';
 import { admin, loadResult } from '../../../_helpers';
 import type { PageServerLoad } from './$types';
 

@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { getArchive } from '$lib/server/archives';
+import { getArchive } from '#lib/server/archives.js';
 import { loadResult } from '../../../_helpers';
 import type { RequestHandler } from './$types';
 

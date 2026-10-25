@@ -2,7 +2,7 @@
   import '../app.css';
   import { page } from '$app/state';
   import { afterNavigate } from '$app/navigation';
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n.js';
   let { data, children } = $props();
   let language = $derived(data.preferences.language);
   let menuOpen = $state(false);

@@ -1,7 +1,12 @@
-import { t } from '$lib/i18n';
+import { t } from '#lib/i18n.js';
 import { fail } from '@sveltejs/kit';
-import { getLectureArchive, requestArchive } from '$lib/server/archives';
-import { getLecture, purchaseLectureAccess, reportContent, DomainError } from '$lib/server/domain';
+import { getLectureArchive, requestArchive } from '#lib/server/archives.js';
+import {
+  getLecture,
+  purchaseLectureAccess,
+  reportContent,
+  DomainError
+} from '#lib/server/domain/index.js';
 import { actor, actionResult, field, loadResult, errorMessage } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, params, url }) => {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { statusLabel } from '$lib/i18n';
+  import { statusLabel } from '#lib/i18n.js';
   let { value }: { value: string } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
 </script>

@@ -1,4 +1,4 @@
-import { getJobs, controlQueue, retryJob, cancelJob } from '$lib/server/jobs';
+import { getJobs, controlQueue, retryJob, cancelJob } from '#lib/server/jobs.js';
 
 import { admin, field, actionResult, loadResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';

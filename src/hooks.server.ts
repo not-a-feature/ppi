@@ -1,28 +1,27 @@
-import { t } from '$lib/i18n';
-import { building } from '$app/environment';
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import { t } from '#lib/i18n.js';
+import { building } from '$app/env';
+import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { auth } from '$lib/server/auth';
-import { pool } from '$lib/server/db';
-import { currentAccount } from '$lib/server/auth/session';
-import { allowAuthForm } from '$lib/server/auth/rate-limit';
-import { defaultPreferences } from '$lib/server/preferences';
+import { auth } from '#lib/server/auth/index.js';
+import { pool } from '#lib/server/db.js';
+import { currentAccount } from '#lib/server/auth/session.js';
+import { allowAuthForm } from '#lib/server/auth/rate-limit.js';
+import { defaultPreferences } from '#lib/server/preferences.js';
 import {
   clientAddressHeader,
   requestWithClientAddress,
   validateProxyConfiguration
-} from '$lib/server/auth/client-address';
-import { tryAcquireUpload } from '$lib/server/upload-concurrency';
-import { recordSystemFailure } from '$lib/server/admin-alerts';
+} from '#lib/server/auth/client-address.js';
+import { tryAcquireUpload } from '#lib/server/upload-concurrency.js';
+import { recordSystemFailure } from '#lib/server/admin-alerts.js';
 
-export const handleError: HandleServerError = async ({ error, event, status, message }) => {
-  if (status >= 500)
+export const handleError: HandleServerError = async ({ error, event, kind }) => {
+  if (kind === 'unknown' || error.status >= 500)
     await recordSystemFailure(
       'web',
       error,
       `${event.request.method} ${event.route.id ?? '(unknown route)'}`
     ).catch(() => console.error('Could not queue administrator error notification.'));
-  return { message };
 };
 
 if (!building) validateProxyConfiguration();
@@ -34,7 +33,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   event.locals.preferences = { ...defaultPreferences };
   const action = [...event.url.searchParams.keys()].find((key) => key.startsWith('/'));
   if (!building) {
-    event.request = requestWithClientAddress(event.request, event.getClientAddress());
+    requestWithClientAddress(event.request, event.getClientAddress());
     const formPath = event.route.id === '/(auth)/[flow]' ? `/${event.params.flow}` : event.route.id;
     if (
       event.request.method === 'POST' &&

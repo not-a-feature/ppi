@@ -1,4 +1,4 @@
-import { t } from '$lib/i18n';
+import { t } from '#lib/i18n.js';
 import { fail } from '@sveltejs/kit';
 import {
   listAdminUsersPage,
@@ -6,7 +6,7 @@ import {
   setAdmin,
   setAccountStatus,
   adjustCredits
-} from '$lib/server/domain';
+} from '#lib/server/domain/index.js';
 
 import { admin, field, actionResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';

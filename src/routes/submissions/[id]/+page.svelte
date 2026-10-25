@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { t, dateText } from '$lib/i18n';
+  import { t, dateText } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import Status from '$lib/components/Status.svelte';
-  import Feedback from '$lib/components/Feedback.svelte';
-  import ProtocolForm from '$lib/components/ProtocolForm.svelte';
-  import { termLabel } from '$lib/terms';
+  import Status from '#lib/components/Status.svelte';
+  import Feedback from '#lib/components/Feedback.svelte';
+  import ProtocolForm from '#lib/components/ProtocolForm.svelte';
+  import { termLabel } from '#lib/terms.js';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data, form } = $props();
   let publishedRevision = $derived(

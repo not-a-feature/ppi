@@ -2,8 +2,8 @@
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
   import { untrack } from 'svelte';
-  import { namedAction } from '$lib/form-actions';
-  import { t, type Language } from '$lib/i18n';
+  import { namedAction } from '#lib/form-actions.js';
+  import { t, type Language } from '#lib/i18n.js';
 
   type Archive = {
     id: string;

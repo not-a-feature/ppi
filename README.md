@@ -1,30 +1,26 @@
 # PPI 3
 
-A new PPI for sharing exam protocols, built with SvelteKit, TypeScript, PostgreSQL and Better Auth.
-
-Students upload PDF/TXT files and use tokens for lecture access. Administrators review submissions, manage the catalogue and control background jobs. Scan-only pages receive OCR; downloads include the student's zx ID and date.
+PPI lets students share exam protocols and use tokens for lecture access. Built with SvelteKit, TypeScript, PostgreSQL and Better Auth, with browser review, OCR and personalised downloads.
 
 ## Run locally
 
-Requires Node.js 24 and Docker.
+Requires Node.js 24.22.1 or a newer 24.x release, and Docker.
 
 ```sh
 cp .env.example .env
 npm ci
 docker compose up -d --wait
 npm run db:migrate
-npm run db:seed
-npm run db:seed-playground
 docker compose --profile worker up -d --build worker
 npm run dev
 ```
 
-Set a random `BETTER_AUTH_SECRET` in `.env` first. Open http://localhost:5173; local email is available at http://localhost:8029. Seeded accounts use `Ppi2-demo-only-2026!`: admin `zxabc01`, student `zxabc02`.
+Set a random `BETTER_AUTH_SECRET` in `.env` before starting. Open http://localhost:5173; local mail is at http://localhost:8029.
 
-Run `npm run check`, `npm test` and `npm run build`. Database tests require a disposable PostgreSQL database in `TEST_DATABASE_URL`.
+There are no default accounts. Register and verify your zx account, set its full address as `BOOTSTRAP_ADMIN_EMAIL` in `.env`, then run `npm run db:bootstrap-admin`. Assign further administrators through the website.
 
-For browser regressions, install Chromium with `npx playwright install chromium`, build with `npm run build`, then run `npm run test:e2e` with the same `TEST_DATABASE_URL`. Tests use a temporary schema and files, capture email locally, and supply synthetic safety results without sending mail or running a virus scanner.
+Run `npm run check`, `npm test` and `npm run build`. Database and browser tests need a disposable local database in `TEST_DATABASE_URL`; see [operations](docs/operations.md).
 
-This is a work in progress. Production setup and the legacy import are still pending. See [architecture](docs/architecture.md), [operations](docs/operations.md) and [migration](docs/migration.md).
+Work in progress: final migration and production rollout are pending. See [architecture](docs/architecture.md), [operations](docs/operations.md) and [migration](docs/migration.md).
 
 Licensed under [EUPL 1.2](LICENSE). Legacy asset attribution is in [NOTICE](NOTICE).

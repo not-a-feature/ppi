@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { untrack } from 'svelte';
-  import { afterNavigate, replaceState } from '$app/navigation';
-  import { t } from '$lib/i18n';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { t } from '#lib/i18n.js';
   let { data } = $props();
   let period = $state<'30d' | '6m' | '1y' | 'max'>(
     untrack(() => data.range as '30d' | '6m' | '1y' | 'max')
@@ -10,9 +10,9 @@
   let statistics = $derived(data.periods[period]);
   function changePeriod(value: typeof period) {
     period = value;
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.set('range', value);
-    replaceState(url, page.state);
+    void goto(url, { shallow: true, replace: true, state: page.state });
   }
   afterNavigate(({ type, to }) => {
     if (to && (type === 'link' || type === 'popstate'))

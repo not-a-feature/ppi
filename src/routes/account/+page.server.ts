@@ -1,9 +1,9 @@
-import { t } from '$lib/i18n';
+import { t } from '#lib/i18n.js';
 import { redirect, fail } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
-import { auth } from '$lib/server/auth';
-import { requestAccountDeletion, DomainError } from '$lib/server/domain';
-import { updatePreferences } from '$lib/server/preferences';
+import { auth } from '#lib/server/auth/index.js';
+import { requestAccountDeletion, DomainError } from '#lib/server/domain/index.js';
+import { updatePreferences } from '#lib/server/preferences.js';
 import { actor, field, actionResult, errorMessage } from '../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = ({ locals }) => ({

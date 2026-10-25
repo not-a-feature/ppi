@@ -1,4 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import adapter from '@sveltejs/adapter-node';
 import { defineConfig } from 'vite';
 import { cpSync, existsSync, readFileSync } from 'node:fs';
 
@@ -14,6 +15,6 @@ for (const directory of ['cmaps', 'standard_fonts', 'wasm', 'iccs']) {
 }
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit({ adapter: adapter() })],
   server: { watch: { ignored: ['**/static/pdfjs/**'] } }
 });

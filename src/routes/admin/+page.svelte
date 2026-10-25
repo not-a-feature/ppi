@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { t, dateText, queueLabel } from '$lib/i18n';
+  import { t, dateText, queueLabel } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import Status from '$lib/components/Status.svelte';
+  import Status from '#lib/components/Status.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data } = $props();
   let lastSeen = $derived(data.jobs.worker.lastSeen ? new Date(data.jobs.worker.lastSeen) : null);

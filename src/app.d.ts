@@ -1,5 +1,5 @@
-import type { auth } from '$lib/server/auth';
-import type { Preferences } from '$lib/server/preferences';
+import type { auth } from '#lib/server/auth/index.js';
+import type { Preferences } from '#lib/server/preferences.js';
 
 declare global {
   namespace App {

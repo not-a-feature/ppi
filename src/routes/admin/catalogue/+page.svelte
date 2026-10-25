@@ -1,15 +1,15 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { untrack } from 'svelte';
-  import { afterNavigate, replaceState } from '$app/navigation';
-  import { matchesLecture } from '$lib/catalogue-search';
-  import type { SubmitFunction } from '@sveltejs/kit';
-  import { t, protocolCountLabel } from '$lib/i18n';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { matchesLecture } from '#lib/catalogue-search.js';
+  import type { SubmitFunction } from '$app/forms';
+  import { t, protocolCountLabel } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import { namedAction } from '$lib/form-actions';
-  import Feedback from '$lib/components/Feedback.svelte';
-  import Pagination from '$lib/components/Pagination.svelte';
-  import SearchForm from '$lib/components/SearchForm.svelte';
+  import { namedAction } from '#lib/form-actions.js';
+  import Feedback from '#lib/components/Feedback.svelte';
+  import Pagination from '#lib/components/Pagination.svelte';
+  import SearchForm from '#lib/components/SearchForm.svelte';
   let { data, form } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
   let editingId = $state<string | null>(null);
@@ -29,14 +29,14 @@
     data.reviewHref ? filtered : filtered.slice((displayPage - 1) * 30, displayPage * 30)
   );
   function updateUrl() {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.delete('q');
     url.searchParams.delete('status');
     url.searchParams.delete('page');
     if (query) url.searchParams.set('q', query);
     if (status !== 'all') url.searchParams.set('status', status);
     if (requestedPage > 1) url.searchParams.set('page', String(requestedPage));
-    replaceState(url, page.state);
+    void goto(url, { shallow: true, replace: true, state: page.state });
   }
   afterNavigate(({ type, to }) => {
     if (!to || (type !== 'link' && type !== 'popstate')) return;

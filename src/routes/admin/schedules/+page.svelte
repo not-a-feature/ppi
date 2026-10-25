@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import { namedAction } from '$lib/form-actions';
+  import { namedAction } from '#lib/form-actions.js';
 
-  import Feedback from '$lib/components/Feedback.svelte';
+  import Feedback from '#lib/components/Feedback.svelte';
 
   let { data, form } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');

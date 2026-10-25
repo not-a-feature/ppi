@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { getCreditsDashboard, requestTokens } from '$lib/server/domain';
+import { getCreditsDashboard, requestTokens } from '#lib/server/domain/index.js';
 import { actor, field, actionResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, url }) => {

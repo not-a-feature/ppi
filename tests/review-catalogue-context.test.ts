@@ -13,7 +13,7 @@ const domain = vi.hoisted(() => ({
   removeLectureExaminer: vi.fn(),
   archiveLecture: vi.fn()
 }));
-vi.mock('$lib/server/domain', () => domain);
+vi.mock('#lib/server/domain/index.js', () => domain);
 vi.mock('../src/routes/_helpers', () => ({
   admin: () => ({ id: 'admin', isAdmin: true }),
   loadResult: (operation: () => unknown) => operation(),

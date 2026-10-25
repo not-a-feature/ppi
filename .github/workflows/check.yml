@@ -17,8 +17,8 @@ jobs:
           --health-cmd "pg_isready -U ppi -d ppi_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -32,7 +32,7 @@ jobs:
       - run: npm run test:e2e
         env:
           TEST_DATABASE_URL: postgresql://ppi:test-only@localhost:5432/ppi_test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
           name: browser-test-results

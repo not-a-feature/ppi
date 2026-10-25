@@ -1,4 +1,4 @@
-import { getJob, retryJob, cancelJob } from '$lib/server/jobs';
+import { getJob, retryJob, cancelJob } from '#lib/server/jobs.js';
 import { admin, actionResult, loadResult } from '../../../_helpers';
 import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, params }) => {

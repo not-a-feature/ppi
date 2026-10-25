@@ -1,6 +1,6 @@
-import { listReviewQueuePage } from '$lib/server/domain/moderation';
-import { getJobsSummary } from '$lib/server/jobs';
-import { getAdminOverview } from '$lib/server/statistics';
+import { listReviewQueuePage } from '#lib/server/domain/moderation.js';
+import { getJobsSummary } from '#lib/server/jobs.js';
+import { getAdminOverview } from '#lib/server/statistics.js';
 import { admin } from '../_helpers';
 import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {

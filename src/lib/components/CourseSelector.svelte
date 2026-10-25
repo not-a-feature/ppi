@@ -11,7 +11,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import './selector.css';
-  import { t, type Language, type MessageKey } from '$lib/i18n';
+  import { t, type Language, type MessageKey } from '#lib/i18n.js';
   let {
     lectures,
     value = $bindable(),

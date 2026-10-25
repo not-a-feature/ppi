@@ -1,12 +1,12 @@
 <script lang="ts">
-  import Pagination from '$lib/components/Pagination.svelte';
-  import Feedback from '$lib/components/Feedback.svelte';
-  import ArchiveDownload from '$lib/components/ArchiveDownload.svelte';
+  import Pagination from '#lib/components/Pagination.svelte';
+  import Feedback from '#lib/components/Feedback.svelte';
+  import ArchiveDownload from '#lib/components/ArchiveDownload.svelte';
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
-  import { namedAction } from '$lib/form-actions';
-  import { t as translate, type MessageKey } from '$lib/i18n';
-  import { termLabel } from '$lib/terms';
+  import { namedAction } from '#lib/form-actions.js';
+  import { t as translate, type MessageKey } from '#lib/i18n.js';
+  import { termLabel } from '#lib/terms.js';
   let { data, form } = $props();
   const t = (key: MessageKey, values?: Record<string, string | number>) =>
     translate(data.preferences.language, key, values);

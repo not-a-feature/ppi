@@ -19,9 +19,9 @@ const mocks = vi.hoisted(() => ({
     }
   }
 }));
-vi.mock('$lib/server/domain', () => mocks);
-vi.mock('$lib/server/storage', () => mocks);
-vi.mock('$lib/terms', () => import('../src/lib/terms'));
+vi.mock('#lib/server/domain/index.js', () => mocks);
+vi.mock('#lib/server/storage.js', () => mocks);
+vi.mock('#lib/terms.js', () => import('../src/lib/terms'));
 import { actions as upload } from '../src/routes/upload/+page.server';
 import { actions as submission } from '../src/routes/submissions/[id]/+page.server';
 

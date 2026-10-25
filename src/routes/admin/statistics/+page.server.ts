@@ -1,4 +1,4 @@
-import { getAdminStatisticsPeriods } from '$lib/server/statistics';
+import { getAdminStatisticsPeriods } from '#lib/server/statistics.js';
 import { admin, loadResult } from '../../_helpers';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';

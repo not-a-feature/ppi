@@ -9,15 +9,20 @@ const doubles = vi.hoisted(() => ({
   recordSystemFailure: vi.fn(async () => {}),
   submissions: new Map<string, number>()
 }));
-vi.mock('$app/environment', () => ({ building: false }));
-vi.mock('$lib/server/auth', () => ({ auth: { api: doubles } }));
-vi.mock('$lib/server/db', () => ({ pool: {} }));
-vi.mock('$lib/server/admin-alerts', () => ({ recordSystemFailure: doubles.recordSystemFailure }));
-vi.mock('$lib/server/auth/session', () => ({ currentAccount: vi.fn() }));
-vi.mock('$lib/server/auth/rate-limit', () => ({ allowAuthForm: doubles.allowAuthForm }));
-vi.mock('$lib/server/auth/client-address', () => import('../src/lib/server/auth/client-address'));
-vi.mock('$lib/server/upload-concurrency', () => import('../src/lib/server/upload-concurrency'));
-vi.mock('$lib/server/preferences', () => ({ defaultPreferences: {} }));
+vi.mock('$app/env', () => ({ building: false }));
+vi.mock('#lib/server/auth/index.js', () => ({ auth: { api: doubles } }));
+vi.mock('#lib/server/db.js', () => ({ pool: {} }));
+vi.mock('#lib/server/admin-alerts.js', () => ({
+  recordSystemFailure: doubles.recordSystemFailure
+}));
+vi.mock('#lib/server/auth/session.js', () => ({ currentAccount: vi.fn() }));
+vi.mock('#lib/server/auth/rate-limit.js', () => ({ allowAuthForm: doubles.allowAuthForm }));
+vi.mock(
+  '#lib/server/auth/client-address.js',
+  () => import('../src/lib/server/auth/client-address')
+);
+vi.mock('#lib/server/upload-concurrency.js', () => import('../src/lib/server/upload-concurrency'));
+vi.mock('#lib/server/preferences.js', () => ({ defaultPreferences: {} }));
 vi.mock('better-auth/svelte-kit', () => ({
   svelteKitHandler: ({
     event,
@@ -71,10 +76,9 @@ describe('authentication request boundaries', () => {
       await handleError({
         error: failure,
         event: event('/login'),
-        status: 500,
-        message: 'Internal Error'
+        kind: 'unknown'
       } as never)
-    ).toEqual({ message: 'Internal Error' });
+    ).toBeUndefined();
     expect(doubles.recordSystemFailure).toHaveBeenCalledWith('web', failure, 'POST /(auth)/[flow]');
     logging.mockRestore();
   });

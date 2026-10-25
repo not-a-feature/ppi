@@ -1,13 +1,13 @@
-FROM node:24-bookworm-slim AS build
+FROM node:24.22.1-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:24.22.1-bookworm-slim AS runtime
 WORKDIR /app
-COPY --from=ghcr.io/astral-sh/uv:0.12.5 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
 RUN apt-get update && apt-get install -y --no-install-recommends clamav poppler-utils ca-certificates python3 ghostscript tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu \
     && uv venv --python /usr/bin/python3 /opt/ocr \
     && uv pip install --python /opt/ocr/bin/python ocrmypdf==17.13.0 \

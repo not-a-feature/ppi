@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { t, type Language } from '$lib/i18n';
+  import { t, type Language } from '#lib/i18n.js';
   import './selector.css';
   let {
     examiners,

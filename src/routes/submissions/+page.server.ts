@@ -1,4 +1,4 @@
-import { listOwnSubmissionsPage } from '$lib/server/domain';
+import { listOwnSubmissionsPage } from '#lib/server/domain/index.js';
 import { actor } from '../_helpers';
 import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, url }) => {

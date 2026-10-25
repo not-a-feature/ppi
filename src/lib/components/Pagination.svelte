@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page as currentPage } from '$app/state';
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n.js';
   let {
     page,
     total,
@@ -15,7 +15,7 @@
     { target: page + 1, rel: 'next', label: 'Weiter' }
   ] as const);
   function href(target: number) {
-    const url = new URL(currentPage.url);
+    const url = new URL(currentPage.url.href);
     for (const key of [...url.searchParams.keys()]) {
       if (key.startsWith('/')) url.searchParams.delete(key);
     }

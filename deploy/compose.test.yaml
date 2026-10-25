@@ -36,6 +36,7 @@ services:
     pids_limit: 128
     environment:
       ADDRESS_HEADER: x-forwarded-for
+      PROTOCOL_HEADER: x-forwarded-proto
       XFF_DEPTH: 1
     volumes: ['./files:/data/files']
     depends_on:
@@ -57,7 +58,7 @@ services:
       db: { condition: service_healthy }
       mail: { condition: service_started }
   mail:
-    image: axllent/mailpit:v1.29
+    image: axllent/mailpit:v1.32.0
     restart: unless-stopped
     mem_limit: 128m
     ports: ['127.0.0.1:8025:8025']

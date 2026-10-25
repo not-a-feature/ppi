@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { categoryLabel, t, dateText } from '$lib/i18n';
+  import { categoryLabel, t, dateText } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import { namedAction } from '$lib/form-actions';
-  import Status from '$lib/components/Status.svelte';
-  import Feedback from '$lib/components/Feedback.svelte';
-  import LocalList from '$lib/components/LocalList.svelte';
+  import { namedAction } from '#lib/form-actions.js';
+  import Status from '#lib/components/Status.svelte';
+  import Feedback from '#lib/components/Feedback.svelte';
+  import LocalList from '#lib/components/LocalList.svelte';
   let { data, form } = $props();
   let language = $derived(page.data.preferences?.language ?? 'de');
 </script>

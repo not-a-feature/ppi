@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { DomainError, getDownload } from '$lib/server/domain/index.js';
-import { getDeliveryBytes } from '$lib/server/download-delivery.js';
+import { DomainError, getDownload } from '#lib/server/domain/index.js';
+import { getDeliveryBytes } from '#lib/server/download-delivery.js';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {

@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { termLabel } from '$lib/terms';
-  import { t, feedbackText, dateText } from '$lib/i18n';
+  import { termLabel } from '#lib/terms.js';
+  import { t, feedbackText, dateText } from '#lib/i18n.js';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
-  import { namedAction } from '$lib/form-actions';
-  import Status from '$lib/components/Status.svelte';
-  import Feedback from '$lib/components/Feedback.svelte';
-  import DocumentPreview from '$lib/components/DocumentPreview.svelte';
-  import AutomaticChecks from '$lib/components/AutomaticChecks.svelte';
+  import { namedAction } from '#lib/form-actions.js';
+  import Status from '#lib/components/Status.svelte';
+  import Feedback from '#lib/components/Feedback.svelte';
+  import DocumentPreview from '#lib/components/DocumentPreview.svelte';
+  import AutomaticChecks from '#lib/components/AutomaticChecks.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data, form } = $props();
   let metadataQuery = $state('');

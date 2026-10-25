@@ -7,8 +7,8 @@ import {
   requestReconsideration,
   DomainError,
   type StoredFileInput
-} from '$lib/server/domain';
-import { storeUpload, cleanupUnreferencedUpload } from '$lib/server/storage';
+} from '#lib/server/domain/index.js';
+import { storeUpload, cleanupUnreferencedUpload } from '#lib/server/storage.js';
 import {
   actor,
   field,

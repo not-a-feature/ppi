@@ -25,9 +25,9 @@ export function requestWithClientAddress(request: Request, address: string): Req
   const options = { advanced: { ipAddress: { ipAddressHeaders: [clientAddressHeader] } } };
   const normalized = getIP(new Headers({ [clientAddressHeader]: address }), options);
   assert(normalized, 'The web adapter client address could not be normalized.');
-  const headers = new Headers(request.headers);
+  const headers = request.headers;
   headers.delete('x-forwarded-for');
   headers.delete('x-real-ip');
   headers.set(clientAddressHeader, normalized);
-  return new Request(request, { headers });
+  return request;
 }

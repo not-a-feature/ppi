@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { t, dateText, queueLabel } from '$lib/i18n';
+  import { t, dateText, queueLabel } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import { namedAction } from '$lib/form-actions';
-  import Status from '$lib/components/Status.svelte';
-  import Feedback from '$lib/components/Feedback.svelte';
+  import { namedAction } from '#lib/form-actions.js';
+  import Status from '#lib/components/Status.svelte';
+  import Feedback from '#lib/components/Feedback.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data, form } = $props();
 </script>

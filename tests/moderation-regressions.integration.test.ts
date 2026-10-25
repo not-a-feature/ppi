@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { createServer, type ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor, SubmissionInput } from '../src/lib/server/domain/index.js';
 import { termOptions } from '../src/lib/terms.js';
@@ -12,7 +10,6 @@ const testUrl = process.env.TEST_DATABASE_URL;
 const originalDatabaseUrl = process.env.DATABASE_URL;
 const schema = `ppi_test_${randomUUID().replaceAll('-', '')}`;
 let adminPool: pg.Pool;
-let server: ViteDevServer;
 let db: typeof import('../src/lib/server/db.js');
 let domain: typeof import('../src/lib/server/domain/index.js');
 let route: typeof import('../src/routes/admin/review/[id]/+page.server.js');
@@ -73,22 +70,15 @@ describe.skipIf(!testUrl)('moderation regression transactions and actions', () =
     await adminPool.query(`CREATE SCHEMA ${schema}`);
     url.searchParams.set('options', `-c search_path=${schema},public`);
     process.env.DATABASE_URL = url.toString();
-    server = await createServer({
-      configFile: false,
-      server: { middlewareMode: true, hmr: false },
-      resolve: { alias: { $lib: fileURLToPath(new URL('../src/lib', import.meta.url)) } }
-    });
-    db = (await server.ssrLoadModule('/src/lib/server/db.ts')) as typeof db;
+    db = await import('../src/lib/server/db.js');
     for (const name of (await readdir(new URL('../migrations/', import.meta.url)))
       .filter((name) => name.endsWith('.sql'))
       .sort())
       await db.pool.query(
         await readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8')
       );
-    domain = (await server.ssrLoadModule('/src/lib/server/domain/index.ts')) as typeof domain;
-    route = (await server.ssrLoadModule(
-      '/src/routes/admin/review/[id]/+page.server.ts'
-    )) as typeof route;
+    domain = await import('../src/lib/server/domain/index.js');
+    route = await import('../src/routes/admin/review/[id]/+page.server.js');
     const actors: Actor[] = [];
     for (const email of ['zxreg01@student.uni-tuebingen.de', 'zxreg02@student.uni-tuebingen.de']) {
       const id = randomUUID();
@@ -106,7 +96,6 @@ describe.skipIf(!testUrl)('moderation regression transactions and actions', () =
   });
   afterAll(async () => {
     if (db) await db.pool.end();
-    if (server) await server.close();
     if (adminPool) {
       assert(/^ppi_test_[a-f0-9]{32}$/.test(schema));
       await adminPool.query(`DROP SCHEMA ${schema} CASCADE`);

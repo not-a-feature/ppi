@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { dateText, t } from '$lib/i18n';
-  import Status from '$lib/components/Status.svelte';
+  import { dateText, t } from '#lib/i18n.js';
+  import Status from '#lib/components/Status.svelte';
   let { data } = $props();
   let language = $derived(page.data.preferences.language);
 </script>

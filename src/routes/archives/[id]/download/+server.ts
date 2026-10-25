@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 import { error, redirect } from '@sveltejs/kit';
-import { getArchive, getArchiveDownload } from '$lib/server/archives';
-import { DomainError } from '$lib/server/domain';
+import { getArchive, getArchiveDownload } from '#lib/server/archives.js';
+import { DomainError } from '#lib/server/domain/index.js';
 import { errorMessage } from '../../../_helpers';
 import type { RequestHandler } from './$types';
 

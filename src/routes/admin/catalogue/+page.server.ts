@@ -1,4 +1,4 @@
-import { t } from '$lib/i18n';
+import { t } from '#lib/i18n.js';
 import {
   listLecturesPage,
   getSubmission,
@@ -11,7 +11,7 @@ import {
   renameLectureExaminer,
   removeLectureExaminer,
   archiveLecture
-} from '$lib/server/domain';
+} from '#lib/server/domain/index.js';
 
 import { admin, field, actionResult, loadResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';

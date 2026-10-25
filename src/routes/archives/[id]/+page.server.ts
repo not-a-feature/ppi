@@ -1,4 +1,4 @@
-import { getArchive } from '$lib/server/archives';
+import { getArchive } from '#lib/server/archives.js';
 import { redirect } from '@sveltejs/kit';
 import { actor, loadResult } from '../../_helpers';
 import type { PageServerLoad } from './$types';

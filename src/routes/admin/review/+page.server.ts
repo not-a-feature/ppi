@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getLecturesByIds, listReviewQueuePage } from '$lib/server/domain';
+import { getLecturesByIds, listReviewQueuePage } from '#lib/server/domain/index.js';
 
 import { admin, loadResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';

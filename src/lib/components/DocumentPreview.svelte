@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-  import { t, type MessageKey } from '$lib/i18n';
+  import { t, type MessageKey } from '#lib/i18n.js';
   let { src, language }: { src: string; language: 'de' | 'en' } = $props();
   const tr = (key: MessageKey, values?: Record<string, string | number>) =>
     t(language, key, values);

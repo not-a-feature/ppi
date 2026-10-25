@@ -1,10 +1,10 @@
-import { getSettings, updateSettings, type PolicyInput } from '$lib/server/domain';
+import { getSettings, updateSettings, type PolicyInput } from '#lib/server/domain/index.js';
 import {
   listAdminAlertRecipients,
   saveAdminAlertRecipient,
   removeAdminAlertRecipient
-} from '$lib/server/admin-alerts';
-import { adminAlertEvents, type AdminAlertPreferences } from '$lib/admin-alerts';
+} from '#lib/server/admin-alerts.js';
+import { adminAlertEvents, type AdminAlertPreferences } from '#lib/admin-alerts.js';
 
 import { admin, field, actionResult } from '../../_helpers';
 import type { Actions, PageServerLoad } from './$types';

@@ -1,6 +1,26 @@
 import { test, expect } from '@playwright/test';
 import { login } from './support.js';
 
+test('login rejects cross-origin forms and account search stays local', async ({
+  page,
+  request
+}) => {
+  const response = await request.post('/login', {
+    headers: { origin: 'https://untrusted.example' },
+    form: { zx: 'zxbrw00', password: 'irrelevant' }
+  });
+  expect(response.status()).toBe(403);
+  await login(page, 'zxbrw00');
+  await page.goto('/admin/users');
+  await page.waitForLoadState('networkidle');
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  await page.getByRole('searchbox').fill('zxbrw04');
+  await expect(page).toHaveURL(/q=zxbrw04/);
+  await expect(page.getByRole('heading', { name: 'zxbrw04', exact: true })).toBeVisible();
+  expect(requests).toEqual([]);
+});
+
 test('headers stay aligned from desktop to mobile and keep the active admin tab visible', async ({
   page
 }) => {

@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { DomainError } from '$lib/server/domain';
-import type { Actor } from '$lib/server/domain';
+import { DomainError } from '#lib/server/domain/index.js';
+import type { Actor } from '#lib/server/domain/index.js';
 export function actor(locals: App.Locals): Actor {
   if (!locals.actor) redirect(303, '/login');
   return locals.actor;

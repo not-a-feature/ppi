@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { t, dateText } from '$lib/i18n';
+  import { t, dateText } from '#lib/i18n.js';
   import { page } from '$app/state';
-  import Status from '$lib/components/Status.svelte';
-  import Pagination from '$lib/components/Pagination.svelte';
+  import Status from '#lib/components/Status.svelte';
+  import Pagination from '#lib/components/Pagination.svelte';
   let language = $derived(page.data.preferences?.language ?? 'de');
   let { data } = $props();
 </script>
