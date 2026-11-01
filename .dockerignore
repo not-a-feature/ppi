@@ -8,3 +8,4 @@ build
 test-results
 coverage
 static/pdfjs
+**/__pycache__

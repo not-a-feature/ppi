@@ -27,6 +27,11 @@ jobs:
       - run: npm test
         env:
           TEST_DATABASE_URL: postgresql://ppi:test-only@localhost:5432/ppi_test
+      - run: npm run test:legacy
+      - run: python3 scripts/test_scrape_legacy.py
+      - run: npm run test:legacy:integration
+        env:
+          TEST_DATABASE_URL: postgresql://ppi:test-only@localhost:5432/ppi_test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

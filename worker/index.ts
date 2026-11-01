@@ -128,9 +128,10 @@ async function handleFile(data: Record<string, unknown>) {
   );
   const detected = detectFile(bytes, file.original_name);
   assert.equal(detected, file.media_type, 'Stored file type changed');
-  if (!development && detected === 'application/pdf') await inspectPdf(filePath(file.storage_key));
   const scanner = development ? '' : await verifyScannerDatabase();
   const status = development ? 'clean' : await scan(filePath(file.storage_key));
+  if (!development && status === 'clean' && detected === 'application/pdf')
+    await inspectPdf(filePath(file.storage_key));
   await completeFileCheck({
     fileId: file.id,
     generation: Number(data.generation),

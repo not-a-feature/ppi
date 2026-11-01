@@ -21,6 +21,6 @@ There are no default accounts. Register and verify your zx account, set its full
 
 Run `npm run check`, `npm test` and `npm run build`. Database and browser tests need a disposable local database in `TEST_DATABASE_URL`; see [operations](docs/operations.md).
 
-Work in progress: final migration and production rollout are pending. See [architecture](docs/architecture.md), [operations](docs/operations.md) and [migration](docs/migration.md).
+The legacy scraper and importer support a private local snapshot, password recovery and additive imports into the deployed system. See [architecture](docs/architecture.md), [operations](docs/operations.md) and the [migration runbook](docs/migration.md) for deployment and data import.
 
 Licensed under [EUPL 1.2](LICENSE). Legacy asset attribution is in [NOTICE](NOTICE).

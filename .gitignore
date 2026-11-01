@@ -10,3 +10,4 @@ test-results/
 playwright-report/
 static/pdfjs/
 *.log
+__pycache__/

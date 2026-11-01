@@ -35,6 +35,16 @@ Balances equal the ledger sum and cannot become negative. Account locks prevent 
 
 ClamAV blocks unsafe files. Duplicate, similarity and content checks advise reviewers; model moderation remains a disabled placeholder. OCR processes image pages without text, preserving originals. Downloads carry the student's zx ID and Berlin download date; admin previews stay unmarked.
 
+Uploads first pass account, metadata, size, type and quota validation, then enter private
+storage and the worker queue. The worker verifies bytes and runs ClamAV before PDF
+structure checks. Only clean, structurally valid files enter admin review and queued
+content analysis. Text extraction schedules OCR for image pages, then repeats content
+analysis on the readable derivative. Review can begin before content analysis or OCR
+finishes; those results advise reviewers rather than blocking approval. Scanning stays
+outside the upload request, with one file-check job at a time per worker. The current
+scanner uses `clamscan`; a persistent `clamd` service can reduce signature-loading cost
+for bulk imports but needs a separate deployment configuration and resource test.
+
 Purchases start ZIP preparation on the lecture page. Archives use lecture names and include a metadata `index.json`. Metadata edits invalidate affected ZIPs. Downloads recheck access, publication and safety; multi-lecture protocols require access to any assigned lecture. ZIPs expire after one hour or at the next Berlin midnight, whichever comes first.
 
 Administrators manage queues and schedules through the website. Waiting jobs can be cancelled; running jobs finish before pause or shutdown. Running-job cancellation and editable concurrency are still pending.

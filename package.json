@@ -16,6 +16,11 @@
     "test:e2e": "playwright test",
     "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
     "db:bootstrap-admin": "tsx --env-file=.env scripts/bootstrap-admin.ts",
+    "legacy:prepare": "node scripts/prepare-legacy.mjs",
+    "legacy:bundle": "node scripts/prepare-legacy-bundle.mjs",
+    "legacy:import": "node --env-file=.env scripts/import-legacy.mjs",
+    "test:legacy": "node --test scripts/legacy-data.test.mjs",
+    "test:legacy:integration": "node scripts/test-legacy-import.mjs",
     "worker": "tsx --env-file=.env worker/index.ts"
   },
   "dependencies": {

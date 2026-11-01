@@ -10,7 +10,7 @@ Start with [.env.example](../.env.example), [web settings](../deploy/web.env.exa
 
 The proxy must overwrite `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`. Set `ADDRESS_HEADER=x-forwarded-for`, `XFF_DEPTH=1` and `PROTOCOL_HEADER=x-forwarded-proto`; keep the application listener private. SvelteKit 3 derives the request origin from these headers; `ORIGIN` configures Better Auth and email links. Direct local development leaves `ADDRESS_HEADER` empty. Additional proxies require a reviewed trust configuration.
 
-There are no default accounts. Register and verify the first administrator, set `BOOTSTRAP_ADMIN_EMAIL` in the operator's `.env`, then run `npm run db:bootstrap-admin` once. Remove that setting afterwards; further promotions happen through the website.
+For a fresh installation without imported accounts, register and verify the first administrator, set `BOOTSTRAP_ADMIN_EMAIL` in the operator's `.env`, then run `npm run db:bootstrap-admin` once. Remove that setting afterwards; further promotions happen through the website. A legacy import preserves named administrator accounts; use the [migration runbook](migration.md) before opening registration or starting workers.
 
 Production requires ClamAV with current signatures; development scan mode is rejected. Run the `signatures` service before the worker and install the supplied signature-update service/timer. Apply worker CPU, memory and process limits. Reload the proxy after certificate renewal.
 
